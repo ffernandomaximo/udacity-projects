@@ -1,3 +1,21 @@
+# Truffle Version
+Truffle v5.4.12 (core: 5.4.12)
+Solidity - 0.5.1 (solc-js)
+Node v14.17.6
+Web3.js v1.5.3
+
+# OpenZeppelin Version
+openzeppelin-solidity@2.3.0
+
+# ERC-721 Token Name and Symbol
+Token name and symbol are defined within the migrations\2_deploy_contract.js file.
+Name: 'CryptoStar'
+Symbol: 'CSTR'
+
+# Token Address on Rinkeby Network
+0x4f407ce0c0ef7f1a9ee9f16ee2a9dc1d592d4d8d4ccd35728c5fafcd4f1b7479
+https://rinkeby.etherscan.io/tx/0x4f407ce0c0ef7f1a9ee9f16ee2a9dc1d592d4d8d4ccd35728c5fafcd4f1b7479
+
 # ND1309 C2 Ethereum Smart Contracts, Tokens and Dapps - Project Starter 
 **PROJECT: Decentralized Star Notary Service Project** - For this project, you will create a DApp by adding functionality with your smart contract and deploy it on the public testnet.
 
