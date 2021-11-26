@@ -1,0 +1,36 @@
+GET BLOCK HEIGHT
+GET http://localhost:8000/block/height/0
+
+
+REQUEST VALIDATION
+POST http://localhost:8000/requestValidation
+{
+    "address": ""
+}
+
+
+SUBMIT STAR
+{
+    "address":"",
+    "signature":"",
+    "message":"",
+    "star": {
+                "dec":"68° 57 56.9",
+                "ra":"16h 29m 1.0s",
+                "story":"First Star"
+            }
+}
+{
+    "address":"",
+    "signature":"",
+    "message":"",
+    "star": {
+                "dec":"86° 75 65.9",
+                "ra":"16h 29m 1.0s",
+                "story":"Second Star"
+            }
+}
+
+
+GET BLOCK HASH
+http://localhost:8000/block/hash/...
