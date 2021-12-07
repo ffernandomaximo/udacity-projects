@@ -233,14 +233,13 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Update the appropriate fields - ownerID, distributorID, itemState
   // Transfer money to farmer
   // emit the appropriate event
-  function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) //onlyDistributor()
+  function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) onlyDistributor()
   {
     items[_upc].ownerID = msg.sender;
     items[_upc].distributorID = msg.sender;
     items[_upc].itemState = State.Sold;
 
     items[_upc].originFarmerID.transfer(items[_upc].productPrice);
-
     emit Sold(_upc);
   }
 
@@ -250,7 +249,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Call modifier to verify caller of this function
   // Update the appropriate fields
   // Emit the appropriate event
-  function shipItem(uint _upc) public sold(_upc) //onlyDistributor()
+  function shipItem(uint _upc) public sold(_upc) onlyDistributor()
   {
     items[_upc].itemState = State.Shipped;
         
