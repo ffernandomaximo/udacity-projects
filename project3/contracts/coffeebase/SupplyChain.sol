@@ -266,8 +266,10 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Emit the appropriate event
   function receiveItem(uint _upc) public shipped(_upc) onlyRetailer()
   {
-    items[_upc].ownerID = msg.sender;
-    items[_upc].retailerID = msg.sender;
+    Ownable.transferOwnership(msg.sender);
+    owner = payable(Ownable.ownerOri());
+    items[_upc].ownerID = owner;
+    items[_upc].retailerID = owner;
     items[_upc].itemState = State.Received;
     
     emit Received(_upc);
@@ -281,8 +283,10 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Emit the appropriate event
   function purchaseItem(uint _upc) public received(_upc) onlyConsumer()
   {
-    items[_upc].ownerID = msg.sender;
-    items[_upc].consumerID = payable(msg.sender);
+    Ownable.transferOwnership(msg.sender);
+    owner = payable(Ownable.ownerOri());
+    items[_upc].ownerID = owner;
+    items[_upc].consumerID = owner;
     items[_upc].itemState = State.Purchased;
 
     emit Purchased(_upc);
