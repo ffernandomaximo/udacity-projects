@@ -234,6 +234,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // emit the appropriate event
   function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) //onlyDistributor()
   {
+    owner = payable(ownerOri());
     items[_upc].ownerID = msg.sender;
     items[_upc].distributorID = payable(msg.sender);
     items[_upc].itemState = State.Sold;
@@ -263,8 +264,9 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Emit the appropriate event
   function receiveItem(uint _upc) public shipped(_upc) //onlyRetailer()
   {
-    items[_upc].ownerID = owner;
-    items[_upc].retailerID = owner;
+    owner = payable(Ownable.ownerOri());
+    items[_upc].ownerID = msg.sender;
+    items[_upc].retailerID = msg.sender;
     items[_upc].itemState = State.Received;
     
     emit Received(_upc);
@@ -276,10 +278,11 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Access Control List enforced by calling Smart Contract / DApp
   // Update the appropriate fields - ownerID, consumerID, itemState
   // Emit the appropriate event
-  function purchaseItem(uint _upc) public received(_upc) onlyConsumer()
+  function purchaseItem(uint _upc) public received(_upc) //onlyConsumer()
   {
-    items[_upc].ownerID = owner;
-    items[_upc].consumerID = owner;
+    owner = payable(Ownable.ownerOri());
+    items[_upc].ownerID = msg.sender;
+    items[_upc].consumerID = payable(msg.sender);
     items[_upc].itemState = State.Purchased;
 
     emit Purchased(_upc);

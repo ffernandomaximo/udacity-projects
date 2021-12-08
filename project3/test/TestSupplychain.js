@@ -150,8 +150,8 @@ contract('SupplyChain', function(accounts) {
         const distributorRole = await DistributorRole.deployed()
         await distributorRole.addDistributor(distributorID)
         //await distributorRole.renounceDistributor()
-        // const ownable = await Ownable.deployed()
-        // await ownable.transferOwnership(distributorID)
+        const ownable = await Ownable.deployed()
+        await ownable.transferOwnership(distributorID)
 
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -201,14 +201,14 @@ contract('SupplyChain', function(accounts) {
         assert.equal(resultBufferTwo[5], 5, 'Error: Invalid item State')
         assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID') 
     })    
-
+    
     // 7th Test
     it("Testing smart contract function receiveItem() that allows a retailer to mark coffee received", async() => {
         const supplyChain = await SupplyChain.deployed()
         const retailerRole = await RetailerRole.deployed()
         await retailerRole.addRetailer(retailerID)
-        // const ownable = await Ownable.deployed()
-        // await ownable.transferOwnership(retailerID, {from: distributorID})
+        const ownable = await Ownable.deployed()
+        await ownable.transferOwnership(retailerID, {from: distributorID})
         
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -222,7 +222,7 @@ contract('SupplyChain', function(accounts) {
         console.log(await retailerRole.checkRetailer({from: retailerID}))
 
         // Mark an item as Sold by calling function receiveItem()
-        await supplyChain.receiveItem(upc) //{from: retailerID})
+        await supplyChain.receiveItem(upc, {from: retailerID})
 
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** // 
 
@@ -232,7 +232,7 @@ contract('SupplyChain', function(accounts) {
 
         // Verify the result set
         assert.equal(resultBufferTwo[5], 6, 'Error: Invalid item State')
-        //assert.equal(resultBufferTwo[7], retailerID, 'Error: Missing or Invalid retailerID')     
+        assert.equal(resultBufferTwo[7], retailerID, 'Error: Missing or Invalid retailerID')     
     })    
 
     // 8th Test
@@ -240,8 +240,8 @@ contract('SupplyChain', function(accounts) {
         const supplyChain = await SupplyChain.deployed()
         const consumerRole = await ConsumerRole.deployed()
         await consumerRole.addConsumer(consumerID)
-        // const ownable = await Ownable.deployed()
-        // await ownable.transferOwnership(consumerID, {from: retailerID})
+        const ownable = await Ownable.deployed()
+        await ownable.transferOwnership(consumerID, {from: retailerID})
 
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -255,7 +255,7 @@ contract('SupplyChain', function(accounts) {
         console.log(await consumerRole.checkConsumer({from: consumerID}))
 
         // Mark an item as Sold by calling function purchaseItem()
-        await supplyChain.purchaseItem(upc) //{from: consumerID})
+        await supplyChain.purchaseItem(upc, {from: consumerID})
 
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
 
@@ -265,9 +265,9 @@ contract('SupplyChain', function(accounts) {
 
         // Verify the result set
         assert.equal(resultBufferTwo[5], 7, 'Error: Invalid item State')
-        //assert.equal(resultBufferTwo[8], consumerID, 'Error: Missing or Invalid consumerID')   
+        assert.equal(resultBufferTwo[8], consumerID, 'Error: Missing or Invalid consumerID')   
     })    
- 
+
     // 9th Test
     it("Testing smart contract function fetchItemBufferOne() that allows anyone to fetch item details from blockchain", async() => {
         const supplyChain = await SupplyChain.deployed()
@@ -286,7 +286,6 @@ contract('SupplyChain', function(accounts) {
         assert.equal(resultBufferOne[7], originFarmLongitude, 'Error: Missing or Invalid originFarmLongitude')
     })
 
-    /*
     // 10th Test
     it("Testing smart contract function fetchItemBufferTwo() that allows anyone to fetch item details from blockchain", async() => {
         const supplyChain = await SupplyChain.deployed()
@@ -305,5 +304,5 @@ contract('SupplyChain', function(accounts) {
         assert.equal(resultBufferTwo[7], retailerID, 'Error: Missing or Invalid retailerID')
         assert.equal(resultBufferTwo[8], consumerID, 'Error: Missing or Invalid consumerID')
     })
-    */
+    /* */
 });
