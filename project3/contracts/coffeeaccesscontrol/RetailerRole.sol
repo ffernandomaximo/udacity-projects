@@ -52,4 +52,8 @@ contract RetailerRole {
     retailers.remove(account);
     emit RetailerRemoved(account);
   }
+
+  function checkRetailer() onlyRetailer() public view returns (address) {
+     return msg.sender;
+  }
 }

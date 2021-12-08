@@ -52,4 +52,8 @@ contract ConsumerRole {
     consumers.remove(account);
     emit ConsumerRemoved(account);   
   }
+
+  function checkConsumer() onlyConsumer() public view returns (address) {
+     return msg.sender;
+  }
 }

@@ -53,7 +53,7 @@ contract DistributorRole {
     emit DistributorRemoved(account);
   }
 
-  function check() onlyDistributor() public view returns (address) {
+  function checkDistributor() onlyDistributor() public view returns (address) {
      return msg.sender;
   }
 }

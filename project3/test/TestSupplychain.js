@@ -162,23 +162,21 @@ contract('SupplyChain', function(accounts) {
         })
     
         console.log(await distributorRole.isDistributor(distributorID))
-        console.log(await distributorRole.check({from: distributorID}))
+        console.log(await distributorRole.checkDistributor({from: distributorID}))
 
         // Mark an item as Sold by calling function buyItem()
         await supplyChain.buyItem(upc, {from: distributorID, value: productPrice})
-
 
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
         
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
         const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc)
-        console.log(resultBufferTwo[6])
 
         // Verify the result set
         assert.equal(resultBufferTwo[5], 4, 'Error: Invalid item State')
         assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID')
     })
-/*    
+    
     // 6th Test
     it("Testing smart contract function shipItem() that allows a distributor to ship coffee", async() => {
         const supplyChain = await SupplyChain.deployed()
@@ -192,19 +190,16 @@ contract('SupplyChain', function(accounts) {
         })
 
         // Mark an item as Shipped by calling function shipItem()
-        await supplyChain.shipItem(upc) //{from: distributorID})
-
+        await supplyChain.shipItem(upc, {from: distributorID})
 
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
 
-
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
         const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc)
-        //console.log(resultBufferTwo[6])
 
         // Verify the result set
         assert.equal(resultBufferTwo[5], 5, 'Error: Invalid item State')
-        //assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID') 
+        assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID') 
     })    
 
     // 7th Test
@@ -212,8 +207,8 @@ contract('SupplyChain', function(accounts) {
         const supplyChain = await SupplyChain.deployed()
         const retailerRole = await RetailerRole.deployed()
         await retailerRole.addRetailer(retailerID)
-        const ownable = await Ownable.deployed()
-        await ownable.transferOwnership(retailerID, {from: distributorID})
+        // const ownable = await Ownable.deployed()
+        // await ownable.transferOwnership(retailerID, {from: distributorID})
         
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -223,19 +218,13 @@ contract('SupplyChain', function(accounts) {
             eventEmitted = true
         })
 
-        var r = await retailerRole.isRetailer(retailerID) 
-        var o = await ownable.isOwner({from: retailerID})
-        var origOwner = await ownable.ownerOri()
-
-        console.log(r, o, retailerID, origOwner)
-
+        console.log(await retailerRole.isRetailer(retailerID))
+        console.log(await retailerRole.checkRetailer({from: retailerID}))
 
         // Mark an item as Sold by calling function receiveItem()
         await supplyChain.receiveItem(upc) //{from: retailerID})
 
-
-        // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
-
+        // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** // 
 
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
         const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc)
@@ -251,8 +240,8 @@ contract('SupplyChain', function(accounts) {
         const supplyChain = await SupplyChain.deployed()
         const consumerRole = await ConsumerRole.deployed()
         await consumerRole.addConsumer(consumerID)
-        const ownable = await Ownable.deployed()
-        await ownable.transferOwnership(consumerID, {from: retailerID})
+        // const ownable = await Ownable.deployed()
+        // await ownable.transferOwnership(consumerID, {from: retailerID})
 
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -262,19 +251,13 @@ contract('SupplyChain', function(accounts) {
             eventEmitted = true
         })
 
-        var r = await consumerRole.isConsumer(consumerID) 
-        var o = await ownable.isOwner({from: consumerID})
-        var origOwner = await ownable.ownerOri()
-
-        console.log(r, o, consumerID, origOwner)
-
+        console.log(await consumerRole.isConsumer(consumerID))
+        console.log(await consumerRole.checkConsumer({from: consumerID}))
 
         // Mark an item as Sold by calling function purchaseItem()
         await supplyChain.purchaseItem(upc) //{from: consumerID})
 
-
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
-
 
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
         const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc)
@@ -295,7 +278,7 @@ contract('SupplyChain', function(accounts) {
         // Verify the result set:
         assert.equal(resultBufferOne[0], sku, 'Error: Invalid item SKU')
         assert.equal(resultBufferOne[1], upc, 'Error: Invalid item UPC')
-        //assert.equal(resultBufferOne[2], consumerID, 'Error: Missing or Invalid ownerID')
+        assert.equal(resultBufferOne[2], consumerID, 'Error: Missing or Invalid ownerID')
         assert.equal(resultBufferOne[3], originFarmerID, 'Error: Missing or Invalid originFarmerID')
         assert.equal(resultBufferOne[4], originFarmName, 'Error: Missing or Invalid originFarmName')
         assert.equal(resultBufferOne[5], originFarmInformation, 'Error: Missing or Invalid originFarmInformation')
