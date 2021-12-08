@@ -149,8 +149,9 @@ contract('SupplyChain', function(accounts) {
         const supplyChain = await SupplyChain.deployed()
         const distributorRole = await DistributorRole.deployed()
         await distributorRole.addDistributor(distributorID)
-        const ownable = await Ownable.deployed()
-        await ownable.transferOwnership(distributorID)
+        //await distributorRole.renounceDistributor()
+        // const ownable = await Ownable.deployed()
+        // await ownable.transferOwnership(distributorID)
 
         // Declare and Initialize a variable for event
         var eventEmitted = false
@@ -159,31 +160,25 @@ contract('SupplyChain', function(accounts) {
         await supplyChain.Sold(null, (error, event)=>{    
             eventEmitted = true
         })
-
-        var r = await distributorRole.isDistributor(distributorID) 
-        var o = await ownable.isOwner({from: distributorID})
-        var origOwner = await ownable.ownerOri()
-
-        console.log(r, o, distributorID, origOwner)
-
     
+        console.log(await distributorRole.isDistributor(distributorID))
+        console.log(await distributorRole.check({from: distributorID}))
+
         // Mark an item as Sold by calling function buyItem()
-        await supplyChain.buyItem(upc, {value: productPrice}) //{from: distributorID, value: productPrice})
+        await supplyChain.buyItem(upc, {from: distributorID, value: productPrice})
 
 
         // *** ONLY ACCOUNT[0] CAN CALL THE CONTRACT. WHY???????? *** //
-
-
+        
         // Retrieve the just now saved item from blockchain by calling function fetchItem()
         const resultBufferTwo = await supplyChain.fetchItemBufferTwo.call(upc)
         console.log(resultBufferTwo[6])
 
         // Verify the result set
         assert.equal(resultBufferTwo[5], 4, 'Error: Invalid item State')
-        //assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID')
+        assert.equal(resultBufferTwo[6], distributorID, 'Error: Missing or Invalid distributorID')
     })
-
-    
+/*    
     // 6th Test
     it("Testing smart contract function shipItem() that allows a distributor to ship coffee", async() => {
         const supplyChain = await SupplyChain.deployed()

@@ -52,4 +52,8 @@ contract DistributorRole {
     distributors.remove(account);
     emit DistributorRemoved(account);
   }
+
+  function check() onlyDistributor() public view returns (address) {
+     return msg.sender;
+  }
 }

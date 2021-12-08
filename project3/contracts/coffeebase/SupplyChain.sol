@@ -55,7 +55,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
     string  productNotes; // Product Notes
     uint    productPrice; // Product Price
     State   itemState;  // Product State as represented in the enum above
-    address distributorID;  // Metamask-Ethereum address of the Distributor
+    address payable distributorID;  // Metamask-Ethereum address of the Distributor
     address retailerID; // Metamask-Ethereum address of the Retailer
     address payable consumerID; // Metamask-Ethereum address of the Consumer
   }
@@ -71,10 +71,10 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   event Purchased(uint upc);
 
   // Define a modifer that checks to see if msg.sender == owner of the contract
-  //modifier onlyOwner() {
+  // modifier onlyOwners() {
   //      require(msg.sender == owner);
   //      _;
-  //}
+  // }
 
   // Define a modifer that verifies the Caller
   modifier verifyCaller (address _address) {
@@ -220,7 +220,6 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   {
     items[_upc].itemState = State.ForSale;
     items[_upc].productPrice = _price;
-    
     emit ForSale(_upc);
   }
 
@@ -235,10 +234,8 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // emit the appropriate event
   function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) onlyDistributor()
   {
-    Ownable.transferOwnership(msg.sender);
-    owner = payable(Ownable.ownerOri());
-    items[_upc].ownerID = owner;
-    items[_upc].distributorID = owner;
+    items[_upc].ownerID = msg.sender;
+    items[_upc].distributorID = payable(msg.sender);
     items[_upc].itemState = State.Sold;
 
     items[_upc].originFarmerID.transfer(items[_upc].productPrice);
@@ -266,8 +263,6 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Emit the appropriate event
   function receiveItem(uint _upc) public shipped(_upc) onlyRetailer()
   {
-    Ownable.transferOwnership(msg.sender);
-    owner = payable(Ownable.ownerOri());
     items[_upc].ownerID = owner;
     items[_upc].retailerID = owner;
     items[_upc].itemState = State.Received;
@@ -283,8 +278,6 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Emit the appropriate event
   function purchaseItem(uint _upc) public received(_upc) onlyConsumer()
   {
-    Ownable.transferOwnership(msg.sender);
-    owner = payable(Ownable.ownerOri());
     items[_upc].ownerID = owner;
     items[_upc].consumerID = owner;
     items[_upc].itemState = State.Purchased;
