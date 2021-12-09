@@ -3737,15 +3737,48 @@
     "version": "0.8.10+commit.fc410830.Emscripten.clang"
   },
   "networks": {
-    "5777": {
+    "4": {
       "events": {},
       "links": {},
-      "address": "0xb08BB343bC9d5Af6d9198Dd05FaE7B1F4d6cB93D",
-      "transactionHash": "0x2971b825cdb3352ea708019296823d88a58decc9d7ff4f1e71c45f08b8b14f3a"
+      "address": "0x17117248994b005020d1360ce41b16CcfcE35d50",
+      "transactionHash": "0x104e4a85827bad62cbfd8707671de0b0da0bd5db6c76af1df160b3ca977a055f"
+    },
+    "5777": {
+      "events": {
+        "0x71ae26cad02663e3d92efd6ec56031a80d74a20c0ab4183faa8bf262261c9baa": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "RetailerAdded",
+          "type": "event"
+        },
+        "0xdb7176e79cffef81cb01767dd0447a0b24bb72ca9778d4b245581086b2a7e6db": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "RetailerRemoved",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0x9AbfCA24aa64B588A441e7544540777D04E1e97b",
+      "transactionHash": "0x8a0242ff6238cafab9c15632a782247bccc4744a973ede9a114cc00281e4683f"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2021-12-09T09:31:11.476Z",
+  "updatedAt": "2021-12-09T10:05:35.983Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

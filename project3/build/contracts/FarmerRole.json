@@ -3332,15 +3332,48 @@
     "version": "0.8.10+commit.fc410830.Emscripten.clang"
   },
   "networks": {
-    "5777": {
+    "4": {
       "events": {},
       "links": {},
-      "address": "0xD4de52253A4E08440DCb7a52D9262ca87C684473",
-      "transactionHash": "0xe9f10424f62604141165cbf9efc7a8ec63ffd0c436506b928ceb344165b4d98e"
+      "address": "0x733fB4D1fDe28Ec3A95fa6e54f1a79E4f0f8e38a",
+      "transactionHash": "0x9bbcc93148e7bd03761bbbc0fbdc98d5c0f39ac2093a1b6029dd0fd127063618"
+    },
+    "5777": {
+      "events": {
+        "0x2e0ded4123377a3c2bc9a26f1717655a129e2f20752924d42e730ec89c83dbd0": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "FarmerAdded",
+          "type": "event"
+        },
+        "0xa5e0f060af304ab17dd418c7927e3da3ae7868189bf387aee09ab179ccc572f2": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "FarmerRemoved",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0x6fC2bAA2715F4f3E5B4D861aF1E599AA3aC74B7F",
+      "transactionHash": "0xaee81b96dd9f5182f4dc3560674018d421be90da900e3c0e867e60f4328c1eb8"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2021-12-09T09:31:11.467Z",
+  "updatedAt": "2021-12-09T10:05:35.974Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

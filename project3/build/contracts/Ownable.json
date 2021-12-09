@@ -3904,15 +3904,41 @@
     "version": "0.8.10+commit.fc410830.Emscripten.clang"
   },
   "networks": {
-    "5777": {
+    "4": {
       "events": {},
       "links": {},
-      "address": "0x872Dc3AF93c29Becb97762E8e4476935Fd675652",
-      "transactionHash": "0x3d1c1200b1794a42262cb5f75c9a553fc1af9ba9d707eaf4cf253a241e5f12a0"
+      "address": "0x811aEaD9625e31a96529ec84Cf95806e8beBAB6D",
+      "transactionHash": "0xf265d92d8fba8a0472add6a9451f4745669df7eaa3d6f6f57020b14950c8ab9c"
+    },
+    "5777": {
+      "events": {
+        "0x5c486528ec3e3f0ea91181cff8116f02bfa350e03b8b6f12e00765adbb5af85c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "oldOwner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "TransferOwnership",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0x9fd911da9D062d82f235a02002eC5049041FA7aa",
+      "transactionHash": "0x168f5f2cc495c6a6211abe5b9951082b3f85b96240f06ece68cd4f33bf366db4"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2021-12-09T09:31:11.508Z",
+  "updatedAt": "2021-12-09T10:05:36.021Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
