@@ -56,7 +56,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
     uint    productPrice; // Product Price
     State   itemState;  // Product State as represented in the enum above
     address payable distributorID;  // Metamask-Ethereum address of the Distributor
-    address retailerID; // Metamask-Ethereum address of the Retailer
+    address payable retailerID; // Metamask-Ethereum address of the Retailer
     address payable consumerID; // Metamask-Ethereum address of the Consumer
   }
 
@@ -232,14 +232,17 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Update the appropriate fields - ownerID, distributorID, itemState
   // Transfer money to farmer
   // emit the appropriate event
-  function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) //onlyDistributor()
+  function buyItem(uint _upc) public payable forSale(_upc) paidEnough(items[_upc].productPrice) checkValue(_upc) onlyDistributor()
   {
-    owner = payable(ownerOri());
+    // transferOwnership(msg.sender);
+    // owner = payable(ownerOri());
+
+    items[_upc].originFarmerID.transfer(items[_upc].productPrice);
+
     items[_upc].ownerID = msg.sender;
     items[_upc].distributorID = payable(msg.sender);
     items[_upc].itemState = State.Sold;
 
-    items[_upc].originFarmerID.transfer(items[_upc].productPrice);
     emit Sold(_upc);
   }
 
@@ -249,7 +252,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Call modifier to verify caller of this function
   // Update the appropriate fields
   // Emit the appropriate event
-  function shipItem(uint _upc) public sold(_upc) //onlyDistributor()
+  function shipItem(uint _upc) public sold(_upc) onlyDistributor()
   {
     items[_upc].itemState = State.Shipped;
         
@@ -262,11 +265,13 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Access Control List enforced by calling Smart Contract / DApp
   // Update the appropriate fields - ownerID, retailerID, itemState
   // Emit the appropriate event
-  function receiveItem(uint _upc) public shipped(_upc) //onlyRetailer()
+  function receiveItem(uint _upc) public shipped(_upc) onlyRetailer()
   {
-    owner = payable(Ownable.ownerOri());
+    // transferOwnership(msg.sender);
+    // owner = payable(ownerOri());
+   
     items[_upc].ownerID = msg.sender;
-    items[_upc].retailerID = msg.sender;
+    items[_upc].retailerID = payable(msg.sender);
     items[_upc].itemState = State.Received;
     
     emit Received(_upc);
@@ -278,9 +283,10 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Access Control List enforced by calling Smart Contract / DApp
   // Update the appropriate fields - ownerID, consumerID, itemState
   // Emit the appropriate event
-  function purchaseItem(uint _upc) public received(_upc) //onlyConsumer()
+  function purchaseItem(uint _upc) public received(_upc) onlyConsumer()
   {
-    owner = payable(Ownable.ownerOri());
+    items[_upc].distributorID.transfer(items[_upc].productPrice);
+
     items[_upc].ownerID = msg.sender;
     items[_upc].consumerID = payable(msg.sender);
     items[_upc].itemState = State.Purchased;
