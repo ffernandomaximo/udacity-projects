@@ -165,6 +165,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Increment sku
   // Emit the appropriate event
   function harvestItem(uint _upc, address payable _originFarmerID, string memory _originFarmName, string memory _originFarmInformation, string memory _originFarmLatitude, string memory _originFarmLongitude, string memory _productNotes) public 
+  onlyFarmer()
   {
     items[_upc].sku = sku;
     items[_upc].upc = _upc;
@@ -192,7 +193,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Call modifier to verify caller of this function
   // Update the appropriate fields
   // Emit the appropriate event
-  function processItem(uint _upc) public harvested(_upc) onlyFarmer()
+  function processItem(uint _upc) public harvested(_upc) onlyFarmer() verifyCaller(items[_upc].ownerID)
   {
     items[_upc].itemState = State.Processed;
     
@@ -249,7 +250,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole,
   // Call modifier to verify caller of this function
   // Update the appropriate fields
   // Emit the appropriate event
-  function shipItem(uint _upc) public sold(_upc) onlyDistributor()
+  function shipItem(uint _upc) public sold(_upc) onlyDistributor() verifyCaller(items[_upc].ownerID)
   {
     items[_upc].itemState = State.Shipped;
         

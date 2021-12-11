@@ -3738,10 +3738,37 @@
   },
   "networks": {
     "4": {
-      "events": {},
+      "events": {
+        "0xddbf200aa634dc3fb81cfd68583dd1040d1c751d335e1d86b631bde3e977fea8": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "DistributorAdded",
+          "type": "event"
+        },
+        "0x126174f6cf49c81cdb4a9214c6b8f037bef55b4ec31e4fc776cea2a1c8a88d59": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "DistributorRemoved",
+          "type": "event"
+        }
+      },
       "links": {},
-      "address": "0x3bB15385173CB46Cc704B2851193b3aa7ceD9CEb",
-      "transactionHash": "0xa50e3508dfbf3b0e115f49d48e7ffd41bd0aea7f40c14cb68a289843ab9e97a6"
+      "address": "0x1613624acA724123983919522273333a8c682519",
+      "transactionHash": "0xbae0822e2631c8a95fb0485ab167b1e37bc60723f1f5f0a62bbb054799ad65a5"
     },
     "5777": {
       "events": {
@@ -3773,12 +3800,12 @@
         }
       },
       "links": {},
-      "address": "0x3d1FC0C27CdEE03cA5F3b8c5c6Ffc07fB4a486C1",
-      "transactionHash": "0xc2ded9077af94f194adf7885f85316d090450529a318f42eb98dcd3ec75ca2d8"
+      "address": "0xb068c1fCe8dE2fEAeAD4131f8fE22113f3Ec1eEd",
+      "transactionHash": "0xbb557ec2858eb184f50c2679c971c16658fa51d349909a95d0ec9668a2622148"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2021-12-09T10:27:25.210Z",
+  "updatedAt": "2021-12-11T10:01:05.414Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

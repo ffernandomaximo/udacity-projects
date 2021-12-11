@@ -3905,10 +3905,30 @@
   },
   "networks": {
     "4": {
-      "events": {},
+      "events": {
+        "0x5c486528ec3e3f0ea91181cff8116f02bfa350e03b8b6f12e00765adbb5af85c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "oldOwner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "TransferOwnership",
+          "type": "event"
+        }
+      },
       "links": {},
-      "address": "0x811aEaD9625e31a96529ec84Cf95806e8beBAB6D",
-      "transactionHash": "0xf265d92d8fba8a0472add6a9451f4745669df7eaa3d6f6f57020b14950c8ab9c"
+      "address": "0xFe8020abc6Fed2948a8FFc912cF9c68D1601fF6C",
+      "transactionHash": "0xaff1b3c51f92daf89ac4a92f6b0a1a360b2a13618310928b9067143cd795af99"
     },
     "5777": {
       "events": {
@@ -3933,12 +3953,12 @@
         }
       },
       "links": {},
-      "address": "0xb784d6343C6eb663764f8295FF9fde556D7bCebb",
-      "transactionHash": "0x869519ca069eb74c19f87a576437883afd6565d0ea29da76ce171b4cc05cb65b"
+      "address": "0xf9Ca5d617938400Ba58cD1083a56FAFfB6a59e1D",
+      "transactionHash": "0xbd964d04114cab49878315a8891906dda94a0d543a6cc4e0f3b33d8e6379d2a2"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2021-12-09T10:27:25.255Z",
+  "updatedAt": "2021-12-11T10:01:05.441Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
