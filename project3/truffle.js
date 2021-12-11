@@ -1,7 +1,3 @@
-const HDWalletProvider = require('truffle-hdwallet-provider');
-const infuraKey = "ce1b404ad7334078bf3d10382c6966ee";
-
-const mnemonic = "either stamp fire bomb require rescue typical embrace dizzy female angle bridge";
 
 module.exports = {
   networks: {
