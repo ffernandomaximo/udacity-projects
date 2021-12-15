@@ -12,6 +12,16 @@ contract FlightSuretyData {
 
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    struct Airline {
+        uint32    airlineId;
+        string  airlineName;    
+        address airlineAddress;
+        bool    isRegistered;
+        bool    isParticpant;
+    }
+    mapping(uint32 => Airline) private airlines;
+
+    uint mapSize;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -27,6 +37,7 @@ contract FlightSuretyData {
                                 )  
     {
         contractOwner = msg.sender;
+        mapSize++;
     }
 
     /********************************************************************************************/
@@ -84,9 +95,11 @@ contract FlightSuretyData {
                                 bool mode
                             ) 
                             external
-                            requireContractOwner 
+                            requireContractOwner() 
     {
-        operational = mode;
+        if ( isOperational() != mode ) {
+            operational = mode;
+        }
     }
 
     /********************************************************************************************/
@@ -99,11 +112,23 @@ contract FlightSuretyData {
     *
     */   
     function registerAirline
-                            (   
+                            (
+                                uint32 _id,
+                                string memory _name,    
+                                address _address
                             )
                             external
-                            pure
+                            requireContractOwner()
     {
+        require(!airlines[_id].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
+        mapSize++;
+        airlines[_id] = Airline({
+                                    airlineId: _id,
+                                    airlineName: _name,
+                                    airlineAddress: _address,
+                                    isRegistered: true,
+                                    isParticpant: false
+                                }); 
     }
 
 
