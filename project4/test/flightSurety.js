@@ -13,7 +13,7 @@ contract('Flight Surety Tests', async (accounts) => {
   /****************************************************************************************/
   /* Operations and Settings                                                              */
   /****************************************************************************************/
-
+/*
   it(`(multiparty) has correct initial isOperational() value`, async function () {
 
     // Get operating status
@@ -70,7 +70,7 @@ contract('Flight Surety Tests', async (accounts) => {
       await config.flightSuretyData.setOperatingStatus(true);
 
   });
-
+*/
   it('(airline) cannot register an Airline using registerAirline() if it is not funded', async () => {
     
     // ARRANGE

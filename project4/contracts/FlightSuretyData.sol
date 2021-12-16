@@ -13,15 +13,16 @@ contract FlightSuretyData {
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
     struct Airline {
-        uint32    airlineId;
-        string  airlineName;    
         address airlineAddress;
+        uint32  airlineId;
         bool    isRegistered;
         bool    isParticpant;
     }
-    mapping(uint32 => Airline) private airlines;
+    mapping(address => Airline) private airlines;
 
-    uint mapSize;
+    uint32 mapSize;
+
+    address _firsAirlineAddress;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -37,7 +38,15 @@ contract FlightSuretyData {
                                 )  
     {
         contractOwner = msg.sender;
-        mapSize++;
+        mapSize = 1;
+        _firsAirlineAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
+        airlines[_firsAirlineAddress] = Airline(
+            {
+                airlineAddress: _firsAirlineAddress,
+                airlineId: mapSize,
+                isRegistered: true,
+                isParticpant: false
+            });
     }
 
     /********************************************************************************************/
@@ -54,7 +63,7 @@ contract FlightSuretyData {
     */
     modifier requireIsOperational() 
     {
-        require(operational, "Contract is currently not operational");
+        require(operational, "CONTRACT IS CURRENTLY NOT OPERATIONAL");
         _;  // All modifiers require an "_" which indicates where the function body will be added
     }
 
@@ -63,7 +72,13 @@ contract FlightSuretyData {
     */
     modifier requireContractOwner()
     {
-        require(msg.sender == contractOwner, "Caller is not contract owner");
+        require(msg.sender == contractOwner, "CALLER IS NOT CONTRACT OWNER");
+        _;
+    }
+
+    modifier requireRegister()
+    {
+        require(airlines[msg.sender].airlineId <= 4, "CALLER IS NOT A REGISTER");
         _;
     }
 
@@ -102,9 +117,39 @@ contract FlightSuretyData {
         }
     }
 
+   /**
+    * @dev Check if an employee is registered
+    *
+    * @return A bool that indicates if the employee is registered
+    */   
+    function isAirlineRegistered
+                            (
+                                address _address
+                            )
+                            external
+                            view
+                            returns(bool)
+    {
+        return airlines[_address].isRegistered;
+    }
+
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
+   /**
+    * @dev Check if an employee is registered
+    *
+    * @return A bool that indicates if the employee is registered
+    */
+    function setParticipant
+                            (
+                                address _addressParticipant
+                            ) 
+                            external
+                            isAirlineRegistered(_addressParticipant)
+    {
+        airlines[_addressParticipant].airlineAddress.transfer(contracOwner);
+    }
 
    /**
     * @dev Add an airline to the registration queue
@@ -113,22 +158,20 @@ contract FlightSuretyData {
     */   
     function registerAirline
                             (
-                                uint32 _id,
-                                string memory _name,    
                                 address _address
                             )
                             external
-                            requireContractOwner()
+                            requireRegister()
     {
-        require(!airlines[_id].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
+        require(!airlines[_address].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
         mapSize++;
-        airlines[_id] = Airline({
-                                    airlineId: _id,
-                                    airlineName: _name,
-                                    airlineAddress: _address,
-                                    isRegistered: true,
-                                    isParticpant: false
-                                }); 
+        airlines[_address] = Airline(
+            {
+                airlineAddress: _address,
+                airlineId: mapSize,
+                isRegistered: true,
+                isParticpant: false
+            }); 
     }
 
 
