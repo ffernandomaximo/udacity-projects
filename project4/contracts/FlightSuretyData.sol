@@ -24,7 +24,7 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
         bool    isParticpant;
         bool    isController;
     }
-    mapping(uint => Airline) private airlines;
+    mapping(address => Airline) private airlines;
 
     struct Passenger {
         uint    pId;
@@ -44,7 +44,7 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
         contractOwner = msg.sender;
         _aId = 1;
         _firsAAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
-        airlines[_aId] = Airline(
+        airlines[_firsAAddress] = Airline(
             {
                 aId: _aId,
                 aAddress: _firsAAddress,
@@ -68,6 +68,12 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     modifier requireContractOwner()
     {
         require(msg.sender == contractOwner, "CALLER IS NOT CONTRACT OWNER");
+        _;
+    }
+
+    modifier requireController()
+    {
+        require(msg.sender == contractOwner || isController(msg.sender), "CALLER IS NOT CONTROLLER");
         _;
     }
 
@@ -103,11 +109,11 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
                                 address _aAddress
                             )
                             external
-                            onlyController()
+                            requireController()
     {
+        require(!airlines[_aAddress].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
         _aId ++;
-        require(!airlines[_aId].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
-        airlines[_aId] = Airline(
+        airlines[_aAddress] = Airline(
             {
                 aId: _aId,
                 aAddress: _aAddress,
@@ -115,9 +121,9 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
                 isParticpant: false,
                 isController: false
             }); 
-        if (airlines[_aId].aId <= 5) {
-            addController(airlines[_aId].aAddress);
-            airlines[_aId].isController = true;
+        if (airlines[_aAddress].aId <= 5) {
+            addController(airlines[_aAddress].aAddress);
+            airlines[_aAddress].isController = true;
         }
     }
 
