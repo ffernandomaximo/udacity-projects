@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Define a contract 'Supplychain'
+import './accesscontrol/ControllerRole.sol';
+import './accesscontrol/ParticipantRole.sol';
+import './core/Ownable.sol';
+
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract FlightSuretyData {
+contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     using SafeMath for uint256;
 
     /********************************************************************************************/
@@ -13,72 +18,56 @@ contract FlightSuretyData {
     address private contractOwner;                                      // Account used to deploy contract
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
     struct Airline {
-        address airlineAddress;
-        uint32  airlineId;
+        uint    aId;
+        address aAddress;
         bool    isRegistered;
         bool    isParticpant;
+        bool    isController;
     }
-    mapping(address => Airline) private airlines;
+    mapping(uint => Airline) private airlines;
 
-    uint32 mapSize;
+    struct Passenger {
+        uint    pId;
+        address pAddress;
+    }
+    mapping(uint => Passenger) private passengers;
 
-    address _firsAirlineAddress;
+    uint _aId;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
-
-
-    /**
-    * @dev Constructor
-    *      The deploying account becomes contractOwner
-    */
-    constructor
-                                (
-                                )  
-    {
+    
+    /* The deploying account becomes contractOwner */
+    constructor() {
+        address _firsAAddress;
         contractOwner = msg.sender;
-        mapSize = 1;
-        _firsAirlineAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
-        airlines[_firsAirlineAddress] = Airline(
+        _aId = 1;
+        _firsAAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
+        airlines[_aId] = Airline(
             {
-                airlineAddress: _firsAirlineAddress,
-                airlineId: mapSize,
+                aId: _aId,
+                aAddress: _firsAAddress,
                 isRegistered: true,
-                isParticpant: false
+                isParticpant: false,
+                isController: true
             });
+        addController(_firsAAddress);
     }
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
 
-    // Modifiers help avoid duplication of code. They are typically used to validate something
-    // before a function is allowed to be executed.
-
-    /**
-    * @dev Modifier that requires the "operational" boolean variable to be "true"
-    *      This is used on all state changing functions to pause the contract in 
-    *      the event there is an issue that needs to be fixed
-    */
     modifier requireIsOperational() 
     {
         require(operational, "CONTRACT IS CURRENTLY NOT OPERATIONAL");
         _;  // All modifiers require an "_" which indicates where the function body will be added
     }
 
-    /**
-    * @dev Modifier that requires the "ContractOwner" account to be the function caller
-    */
     modifier requireContractOwner()
     {
         require(msg.sender == contractOwner, "CALLER IS NOT CONTRACT OWNER");
-        _;
-    }
-
-    modifier requireRegister()
-    {
-        require(airlines[msg.sender].airlineId <= 4, "CALLER IS NOT A REGISTER");
         _;
     }
 
@@ -86,11 +75,6 @@ contract FlightSuretyData {
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
 
-    /**
-    * @dev Get operating status of contract
-    *
-    * @return A bool that is the current operating status
-    */      
     function isOperational() 
                             public 
                             view 
@@ -99,12 +83,6 @@ contract FlightSuretyData {
         return operational;
     }
 
-
-    /**
-    * @dev Sets contract operations on/off
-    *
-    * When operational mode is disabled, all write transactions except for this one will fail
-    */    
     function setOperatingStatus
                             (
                                 bool mode
@@ -117,63 +95,39 @@ contract FlightSuretyData {
         }
     }
 
-   /**
-    * @dev Check if an employee is registered
-    *
-    * @return A bool that indicates if the employee is registered
-    */   
-    function isAirlineRegistered
-                            (
-                                address _address
-                            )
-                            external
-                            view
-                            returns(bool)
-    {
-        return airlines[_address].isRegistered;
-    }
-
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
-   /**
-    * @dev Check if an employee is registered
-    *
-    * @return A bool that indicates if the employee is registered
-    */
-    function setParticipant
-                            (
-                                address _addressParticipant
-                            ) 
-                            external
-                            isAirlineRegistered(_addressParticipant)
-    {
-        airlines[_addressParticipant].airlineAddress.transfer(contracOwner);
-    }
-
-   /**
-    * @dev Add an airline to the registration queue
-    *      Can only be called from FlightSuretyApp contract
-    *
-    */   
     function registerAirline
                             (
-                                address _address
+                                address _aAddress
                             )
                             external
-                            requireRegister()
+                            onlyController()
     {
-        require(!airlines[_address].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
-        mapSize++;
-        airlines[_address] = Airline(
+        _aId ++;
+        require(!airlines[_aId].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
+        airlines[_aId] = Airline(
             {
-                airlineAddress: _address,
-                airlineId: mapSize,
+                aId: _aId,
+                aAddress: _aAddress,
                 isRegistered: true,
-                isParticpant: false
+                isParticpant: false,
+                isController: false
             }); 
+        if (airlines[_aId].aId <= 5) {
+            addController(airlines[_aId].aAddress);
+            airlines[_aId].isController = true;
+        }
     }
 
+    function fund
+                            (   
+                            )
+                            public
+                            payable
+    {
+    }
 
    /**
     * @dev Buy insurance for a flight
@@ -217,13 +171,6 @@ contract FlightSuretyData {
     *      resulting in insurance payouts, the contract should be self-sustaining
     *
     */   
-    function fund
-                            (   
-                            )
-                            public
-                            payable
-    {
-    }
 
     function getFlightKey
                         (
