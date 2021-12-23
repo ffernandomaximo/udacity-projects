@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 // Define a contract 'Supplychain'
-import './accesscontrol/ControllerRole.sol';
-import './accesscontrol/ParticipantRole.sol';
-import './core/Ownable.sol';
+import './accesscontrol/Controller.sol';
+import './accesscontrol/Participant.sol';
+import './accesscontrol/Registered.sol';
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
+contract FlightSuretyData is Controller, Participant, Registered {
     using SafeMath for uint256;
 
     /********************************************************************************************/
@@ -19,12 +19,12 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
     struct Airline {
         uint    aId;
-        address aAddress;
+        address payable aAddress;
         bool    isRegistered;
-        bool    isParticpant;
+        bool    isParticipant;
         bool    isController;
     }
-    mapping(address => Airline) private airlines;
+    mapping(uint => Airline) private airlines;
 
     struct Passenger {
         uint    pId;
@@ -33,6 +33,8 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     mapping(uint => Passenger) private passengers;
 
     uint _aId;
+
+    uint participantFund = 10;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -44,14 +46,15 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
         contractOwner = msg.sender;
         _aId = 1;
         _firsAAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
-        airlines[_firsAAddress] = Airline(
+        airlines[_aId] = Airline(
             {
                 aId: _aId,
-                aAddress: _firsAAddress,
+                aAddress: payable(_firsAAddress),
                 isRegistered: true,
-                isParticpant: false,
+                isParticipant: false,
                 isController: true
             });
+        register(_firsAAddress);
         addController(_firsAAddress);
     }
 
@@ -77,24 +80,32 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
         _;
     }
 
+    modifier verifyCaller(address _address) {
+        require(msg.sender == _address, "CALLER IS NOT ALLOWED TO EXECUTE FUNCTION"); 
+        _;
+    }
+
+    modifier paidEnough(uint _price) { 
+        require(msg.value >= _price, "AMOUNT IS NOT ENOUGHT"); 
+        _;
+    }
+  
+    modifier checkValue() {
+        uint amountToReturn = msg.value - participantFund;
+        payable(contractOwner).transfer(amountToReturn);
+        _;
+    }
+
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
 
-    function isOperational() 
-                            public 
-                            view 
-                            returns(bool) 
+    function isOperational() public view returns(bool) 
     {
         return operational;
     }
 
-    function setOperatingStatus
-                            (
-                                bool mode
-                            ) 
-                            external
-                            requireContractOwner() 
+    function setOperatingStatus (bool mode) external requireContractOwner() 
     {
         if ( isOperational() != mode ) {
             operational = mode;
@@ -104,46 +115,40 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
-    function registerAirline
-                            (
-                                address _aAddress
-                            )
-                            external
-                            requireController()
+    function registerAirline(address _aAddress) external requireController()
     {
-        require(!airlines[_aAddress].isRegistered, "ERROR: AIRLINE IS ALREADY REGISTERED");
+        require(!isRegistered(_aAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
         _aId ++;
-        airlines[_aAddress] = Airline(
-            {
-                aId: _aId,
-                aAddress: _aAddress,
-                isRegistered: true,
-                isParticpant: false,
-                isController: false
-            }); 
-        if (airlines[_aAddress].aId <= 5) {
-            addController(airlines[_aAddress].aAddress);
-            airlines[_aAddress].isController = true;
+        if(_aId < 5) {
+            airlines[_aId] = Airline(
+                {
+                    aId: _aId,
+                    aAddress: payable(_aAddress),
+                    isRegistered: true,
+                    isParticipant: false,
+                    isController: false
+                });
+            register(_aAddress);
+            if (airlines[_aId].aId <= 5) {
+                airlines[_aId].isController = true;
+                addController(airlines[_aId].aAddress);
+            }
         }
     }
 
-    function fund
-                            (   
-                            )
-                            public
-                            payable
+    function fund(uint _aId) public payable verifyCaller(airlines[_aId].aAddress) onlyRegistered() paidEnough(participantFund) checkValue()
     {
+        require(!isParticipant(msg.sender), "ERROR: AIRLINE IS ALREADY A PARTICIPANT");
+        payable(contractOwner).transfer(10);
+        airlines[_aId].isParticipant = true;
+        addParticipant(msg.sender);
     }
 
    /**
     * @dev Buy insurance for a flight
     *
     */   
-    function buy
-                            (                             
-                            )
-                            external
-                            payable
+    function buy() external payable
     {
 
     }
@@ -203,5 +208,15 @@ contract FlightSuretyData is ControllerRole, ParticipantRole, Ownable {
     // }
 
 
-}
+    function checkAirlines(uint _aId) public view returns(
+        address aAddress, bool isRegistered, bool isParticipant, bool isController
+    ) {
+        return(airlines[_aId].aAddress
+            , airlines[_aId].isRegistered
+            , airlines[_aId].isParticipant
+            , airlines[_aId].isController
+        );
+    }
 
+
+}

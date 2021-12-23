@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 // Import the library 'Roles'
 import "./Roles.sol";
 
-// Define a contract 'ParticipantRole' to manage this role - add, remove, check
-contract ParticipantRole {
+// Define a contract 'Participant' to manage this role - add, remove, check
+contract Participant {
   using Roles for Roles.Role;
 
   // Define 2 events, one for Adding, and other for Removing
@@ -51,9 +51,5 @@ contract ParticipantRole {
   function _removeParticipant(address account) internal {
     participants.remove(account);
     emit ParticipantRemoved(account);   
-  }
-
-  function checkParticipant() onlyParticipant() public view returns (address) {
-     return msg.sender;
   }
 }

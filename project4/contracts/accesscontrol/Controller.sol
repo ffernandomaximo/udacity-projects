@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 // Import the library 'Roles'
 import "./Roles.sol";
 
-// Define a contract 'ControllerRole' to manage this role - add, remove, check
-contract ControllerRole {
+// Define a contract 'Controller' to manage this role - add, remove, check
+contract Controller {
   using Roles for Roles.Role;
 
   // Define 2 events, one for Adding, and other for Removing
@@ -51,9 +51,5 @@ contract ControllerRole {
   function _removeController(address account) internal {
     controllers.remove(account);
     emit ControllerRemoved(account);   
-  }
-
-  function checkController() onlyController() public view returns (address) {
-     return msg.sender;
   }
 }
