@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract FlightSuretyData {
     using SafeMath for uint256;
 
+
     /********************************************************************************************/
     /*                                  DATA VARIABLES - ROLES                                  */
     /********************************************************************************************/
@@ -20,27 +21,34 @@ contract FlightSuretyData {
     Roles.Role private candidates;            
 
     function register(address _address) public {
+        require(!isRegistered(_address), "ERROR: CALLER IS ALREADY REGISTERED");
         registers.add(_address);
     }
 
     function addController(address _address) public {
+        require(!isController(_address), "ERROR: CALLER IS ALREADY A CONTROLLER");
         controllers.add(_address);
     }
 
     function addParticipant(address _address) public {
+        require(!isParticipant(_address), "ERROR: CALLER IS ALREADY A PARTICIPANT");
         participants.add(_address);
     }
-
+    
     function addCandidate(address _address) public {
+        require(!isCandidate(_address), "ERROR: CALLER IS ALREADY A CANDIDATE");
         candidates.add(_address);
     }
+
 
     /********************************************************************************************/
     /*                                 DATA VARIABLES - AIRLINE                                 */
     /********************************************************************************************/
-
     address payable contractOwner;                                      // ACCOUNT USED TO DEPLOY CONTRACT
     bool private operational = true;                                    // BLOCKS ALL STATE CHANGES THROUGHOUT THE CONTRACT IF FALSE
+    address[] multiCalls = new address[](0);
+    uint M = 3;
+    
     struct Airline {
         uint    aId;
         string  aName;
@@ -50,9 +58,9 @@ contract FlightSuretyData {
         bool    aController;
     }
     mapping(uint => Airline) private airlines;
-    address[] multiCalls = new address[](0);
-    uint M = 3;
+    mapping(address => uint) private airlinesReverse;
     uint aCounter;
+    uint participantFund = 10 ether;
 
     /********************************************************************************************/
     /*                                  DATA VARIABLES - VOTING                                 */
@@ -61,7 +69,7 @@ contract FlightSuretyData {
         uint weight; // WEIGHT IS ACCUMULATED BY DELEGATION
         bool voted;  // IF TRUE, THAT PERSON ALREADY VOTED
         address delegate; // PERSON DELEGATED TO
-        uint vote;   // INDEX OF THE VOTED PROPOSAL
+        address vote;   // ADDRESS OF THE VOTED PROPOSAL
     }
     // THIS IS A TYPE FOR A SINGLE PROPOSAL.
     struct Proposal {
@@ -70,25 +78,26 @@ contract FlightSuretyData {
         uint pVoteCount; // NUMBER OF ACCUMULATED VOTES
     }
     Proposal[] public proposals;
-    address public chairperson;
+    //address public chairperson;
+    uint pCounter;
     // THIS DECLARES A STATE VARIABLE THAT STORES A `VOTER` STRUCT FOR EACH POSSIBLE ADDRESS.
     mapping(address => Voter) public voters;
     // A DYNAMICALLY-SIZED ARRAY OF `PROPOSAL` STRUCTS.
 
+
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
-    struct Passenger {
-        uint    pId;
-        address pAddress;
-    }
-    mapping(uint => Passenger) private passengers;
-    uint participantFund = 10;
+    // struct Passenger {
+    //     uint    pId;
+    //     address pAddress;
+    // }
+    // mapping(uint => Passenger) private passengers;
+
 
     /********************************************************************************************/
     /*                                       CONSTRUCTOR DEFINITION                             */
-    /********************************************************************************************/
-    
+    /********************************************************************************************/    
     /* The deploying account becomes contractOwner */
     constructor() {
         contractOwner = payable(msg.sender);
@@ -101,11 +110,14 @@ contract FlightSuretyData {
                 aName: _firstName,
                 aAddress: payable(_firsAAddress),
                 aRegistered: true,
-                aParticipant: false,
+                aParticipant: true,
                 aController: true
             });
         register(_firsAAddress);
         addController(_firsAAddress);
+
+        //chairperson = msg.sender;
+        voters[_firsAAddress].weight = 1;
     }
 
     /********************************************************************************************/
@@ -113,7 +125,7 @@ contract FlightSuretyData {
     /********************************************************************************************/
 
     event Registration(uint aId);
-    event Candidate(uint aId);
+    event Candidate(string pName);
     event Funding(uint aId);
     event Acquisition();
     event Payment();
@@ -204,12 +216,13 @@ contract FlightSuretyData {
         }
     }
 
+
     /********************************************************************************************/
-    /*                                     SMART CONTRACT FUNCTIONS                             */
+    /*                            SMART CONTRACT REGISTER FUNCTIONS                             */
     /********************************************************************************************/
     function registerAirline(string memory _aName, address _aAddress) external requireIsOperational() {
         require(!isRegistered(_aAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
-        if(aCounter < 5) {
+        if(aCounter < 4) {
             require(msg.sender == contractOwner || isController(msg.sender), "CALLER IS NOT CONTROLLER");
             aCounter ++;
             airlines[aCounter] = Airline(
@@ -222,11 +235,15 @@ contract FlightSuretyData {
                     aController: false
                 }
             );
+            airlinesReverse[_aAddress] = aCounter; 
             register(_aAddress);
             airlines[aCounter].aController = true;
             addController(_aAddress);
             
+            giveRightToVote(_aAddress);
+
             emit Registration(aCounter);
+
         }
         else {
             require(!isCandidate(_aAddress), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
@@ -236,35 +253,63 @@ contract FlightSuretyData {
                 pVoteCount: 0
             }));
             addCandidate(_aAddress);
-
-            //revert("CANDIDATE ADDED AND WAITING FOR A VOTE");
-            //vote(1);
-
-            //emit Candidate(aCounter);
+            emit Candidate(_aName);
         }
     }
 
-    function vote(uint proposal) public {
+    function fund() public payable paidEnough(participantFund) checkValue() {
+        require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
+        require(!isParticipant(msg.sender), "ERROR: CALLER IS ALREADY A PARTICIPANT");
+        uint i = airlinesReverse[msg.sender];
+        contractOwner.transfer(participantFund);
+        airlines[i].aParticipant = true;
+        addParticipant(msg.sender);
+    
+        emit Funding(i);
+    }
+
+
+    /********************************************************************************************/
+    /*                              SMART CONTRACT VOTING FUNCTIONS                             */
+    /********************************************************************************************/
+    function giveRightToVote(address _voter) public {
+        //require(msg.sender == chairperson, "ONLY CHAIRPERSON CAN GIVE RIGHT TO VOTE");
+        //require(!voters[_voter].voted, "THE VOTER ALREADY VOTE");
+        require(voters[_voter].weight == 0);
+        voters[_voter].weight = 1;
+    }
+
+    function vote(address _pAddress) public {
+        require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
         Voter storage sender = voters[msg.sender];
         require(sender.weight != 0, "HAS NO RIGHT TO VOTE");
         require(!sender.voted, "ALREADY VOTED.");
         sender.voted = true;
-        sender.vote = proposal;
+        sender.vote = _pAddress;
 
-        // IF `PROPOSAL` IS OUT OF THE RANGE OF THE ARRAY, THIS WILL THROW AUTOMATICALLY AND REVERT ALL CHANGES.
-        proposals[proposal].pVoteCount += sender.weight;
+        for (uint p = 0; p < proposals.length; p++) {
+            if (proposals[p].pAddress == _pAddress) {
+                proposals[p].pVoteCount += sender.weight;
+                break;
+            }
+        }
     }
 
-    function fund(uint _aId2) public payable verifyCaller(airlines[_aId2].aAddress) { //paidEnough(participantFund) //checkValue() {
-        require(isRegistered(airlines[_aId2].aAddress), "ERROR: AIRLINE IS NOT REGISTERED");
-        require(!isParticipant(airlines[_aId2].aAddress), "ERROR: AIRLINE IS ALREADY A PARTICIPANT");
-        contractOwner.transfer(10);
-        airlines[_aId2].aParticipant = true;
-        addParticipant(airlines[_aId2].aAddress);
-    
-        emit Funding(_aId2);
-    }
+    // function winningProposal() public view returns (uint winningProposal_)
+    // {
+    //     uint winningVoteCount = 0;
+    //     for (uint p = 0; p < proposals.length; p++) {
+    //         if (proposals[p].pVoteCount > winningVoteCount) {
+    //             winningVoteCount = proposals[p].pVoteCount;
+    //             winningProposal_ = p;
+    //         }
+    //     }
+    // }
 
+
+    /********************************************************************************************/
+    /*                              SMART CONTRACT BUYING FUNCTIONS                             */
+    /********************************************************************************************/
    /**
     * @dev Buy insurance for a flight
     *
