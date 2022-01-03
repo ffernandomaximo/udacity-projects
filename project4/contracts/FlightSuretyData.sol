@@ -78,11 +78,8 @@ contract FlightSuretyData {
         uint pVoteCount; // NUMBER OF ACCUMULATED VOTES
     }
     Proposal[] public proposals;
-    //address public chairperson;
     uint pCounter;
-    // THIS DECLARES A STATE VARIABLE THAT STORES A `VOTER` STRUCT FOR EACH POSSIBLE ADDRESS.
-    mapping(address => Voter) public voters;
-    // A DYNAMICALLY-SIZED ARRAY OF `PROPOSAL` STRUCTS.
+    mapping(address => address[]) public voters;
 
 
     /********************************************************************************************/
@@ -116,8 +113,7 @@ contract FlightSuretyData {
         register(_firsAAddress);
         addController(_firsAAddress);
 
-        //chairperson = msg.sender;
-        voters[_firsAAddress].weight = 1;
+        //voters[_firsAAddress].weight = 1;
     }
 
     /********************************************************************************************/
@@ -240,21 +236,25 @@ contract FlightSuretyData {
             airlines[aCounter].aController = true;
             addController(_aAddress);
             
-            giveRightToVote(_aAddress);
-
             emit Registration(aCounter);
 
         }
         else {
-            require(!isCandidate(_aAddress), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
-            proposals.push(Proposal({
-                pAddress: _aAddress,
-                pName: _aName,
-                pVoteCount: 0
-            }));
-            addCandidate(_aAddress);
-            emit Candidate(_aName);
+            candidateAirline(_aName, _aAddress);
         }
+    }
+
+    function candidateAirline(string memory _cName, address _cAddress) internal requireIsOperational() {
+        require(!isRegistered(_cAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        require(!isCandidate(_cAddress), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
+        proposals.push(Proposal({
+            pAddress: _cAddress,
+            pName: _cName,
+            pVoteCount: 0
+        }));
+        addCandidate(_cAddress);
+     
+        emit Candidate(_cName);
     }
 
     function fund() public payable paidEnough(participantFund) checkValue() {
@@ -272,29 +272,48 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                              SMART CONTRACT VOTING FUNCTIONS                             */
     /********************************************************************************************/
-    function giveRightToVote(address _voter) public {
-        //require(msg.sender == chairperson, "ONLY CHAIRPERSON CAN GIVE RIGHT TO VOTE");
-        //require(!voters[_voter].voted, "THE VOTER ALREADY VOTE");
-        require(voters[_voter].weight == 0);
-        voters[_voter].weight = 1;
-    }
-
-    function vote(address _pAddress) public {
+    function vote(string memory _vName, address _vAddress) public {
         require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
-        Voter storage sender = voters[msg.sender];
-        require(sender.weight != 0, "HAS NO RIGHT TO VOTE");
-        require(!sender.voted, "ALREADY VOTED.");
-        sender.voted = true;
-        sender.vote = _pAddress;
-
+        require(isCandidate(_vAddress), "ERROR: AIRLINE VOTED IS NOT A CANDIDATE");
+        bool found = false;
+        for (uint v = 0; v < voters[msg.sender].length; v++) {
+            if(voters[msg.sender][v] == _vAddress){
+                found = true;
+                revert("ERROR: CALLER ALREADY VOTED FOR THIS AIRLINE");
+            }
+        }
+        if(!found){
+            voters[msg.sender].push(_vAddress);
+        }
         for (uint p = 0; p < proposals.length; p++) {
-            if (proposals[p].pAddress == _pAddress) {
-                proposals[p].pVoteCount += sender.weight;
+            if (proposals[p].pAddress == _vAddress) {
+                proposals[p].pVoteCount += 1;
+                if((proposals[p].pVoteCount / aCounter)*100 >= 50){
+                    registerAirlineVote(_vName, _vAddress);
+                }
                 break;
             }
         }
     }
 
+    function registerAirlineVote(string memory _aName2, address _aAddress2) internal requireIsOperational() {
+        require(!isRegistered(_aAddress2), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        aCounter ++;
+        airlines[aCounter] = Airline(
+            {
+                aId: aCounter,
+                aName: _aName2,
+                aAddress: payable(_aAddress2),                    
+                aRegistered: true,
+                aParticipant: false,
+                aController: false
+            }
+        );
+        airlinesReverse[_aAddress2] = aCounter; 
+        register(_aAddress2);
+
+        emit Registration(aCounter);
+    }
     // function winningProposal() public view returns (uint winningProposal_)
     // {
     //     uint winningVoteCount = 0;
