@@ -20,32 +20,36 @@ contract FlightSuretyData {
     Roles.Role private participants;
     Roles.Role private candidates;            
 
-    function register(address _address) public {
-        require(!isRegistered(_address), "ERROR: CALLER IS ALREADY REGISTERED");
+    function register(address _address) internal {
+        require(!isRegistered(_address), "ERROR: AIRLINE IS ALREADY REGISTERED");
         registers.add(_address);
     }
 
-    function addController(address _address) public {
-        require(!isController(_address), "ERROR: CALLER IS ALREADY A CONTROLLER");
+    function addController(address _address) internal {
+        require(!isController(_address), "ERROR: AIRLINE IS ALREADY A CONTROLLER");
         controllers.add(_address);
     }
 
-    function addParticipant(address _address) public {
-        require(!isParticipant(_address), "ERROR: CALLER IS ALREADY A PARTICIPANT");
+    function addParticipant(address _address) internal {
+        require(!isParticipant(_address), "ERROR: AIRLINE IS ALREADY A PARTICIPANT");
         participants.add(_address);
     }
     
-    function addCandidate(address _address) public {
-        require(!isCandidate(_address), "ERROR: CALLER IS ALREADY A CANDIDATE");
+    function addCandidate(address _address) internal {
+        require(!isCandidate(_address), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
         candidates.add(_address);
     }
 
+    function removeCandidate(address _address) internal {
+        require(isCandidate(_address), "ERROR: AIRLINE IS NOT A CANDIDATE");
+        candidates.remove(_address);
+    }
 
     /********************************************************************************************/
     /*                                 DATA VARIABLES - AIRLINE                                 */
     /********************************************************************************************/
-    address payable contractOwner;                                      // ACCOUNT USED TO DEPLOY CONTRACT
-    bool private operational = true;                                    // BLOCKS ALL STATE CHANGES THROUGHOUT THE CONTRACT IF FALSE
+    address payable contractOwner;              // ACCOUNT USED TO DEPLOY CONTRACT
+    bool private operational = true;            // BLOCKS ALL STATE CHANGES THROUGHOUT THE CONTRACT IF FALSE
     address[] multiCalls = new address[](0);
     uint M = 3;
     
@@ -66,32 +70,28 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                  DATA VARIABLES - VOTING                                 */
     /********************************************************************************************/
-    struct Voter {
-        uint weight; // WEIGHT IS ACCUMULATED BY DELEGATION
-        bool voted;  // IF TRUE, THAT PERSON ALREADY VOTED
-        address delegate; // PERSON DELEGATED TO
-        address vote;   // ADDRESS OF THE VOTED PROPOSAL
-    }
-    // THIS IS A TYPE FOR A SINGLE PROPOSAL.
     struct Proposal {
-        address pAddress;  //ADDRESS
-        string pName;   // SHORT NAME
-        uint pVoteCount; // NUMBER OF ACCUMULATED VOTES
+        address pAddress;                       // ADDRESS
+        string pName;                           // SHORT NAME
+        uint pVoteCount;                        // NUMBER OF ACCUMULATED VOTES
+        bool pActive;                           // PROPOSAL STATUS
     }
-    Proposal[] public proposals;
-    uint pCounter;
-    mapping(address => address[]) public voters;
+    Proposal[] private proposals;
+    mapping(address => address[]) private voters;
 
 
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
-    // struct Passenger {
-    //     uint    pId;
-    //     address pAddress;
-    // }
-    // mapping(uint => Passenger) private passengers;
-
+    struct Insurance {
+        uint iId;
+        address iPassengerAddress;
+        bytes32 iFlight;
+        uint iPaid;
+    }
+    mapping(uint => Insurance) private insurances;
+    mapping(address => uint[]) public flightTrackList; // .push as you go
+    uint iCounter;
 
     /********************************************************************************************/
     /*                                       CONSTRUCTOR DEFINITION                             */
@@ -100,6 +100,7 @@ contract FlightSuretyData {
     constructor() {
         contractOwner = payable(msg.sender);
         aCounter = 1;
+        iCounter = 1;
         address _firsAAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
         string memory _firstName = "Air New Zealand";
         airlines[aCounter] = Airline(
@@ -108,13 +109,11 @@ contract FlightSuretyData {
                 aName: _firstName,
                 aAddress: payable(_firsAAddress),
                 aRegistered: true,
-                aParticipant: true,
+                aParticipant: false,
                 aController: true
             });
         register(_firsAAddress);
         addController(_firsAAddress);
-
-        //voters[_firsAAddress].weight = 1;
     }
 
 
@@ -218,6 +217,20 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                            SMART CONTRACT REGISTER FUNCTIONS                             */
     /********************************************************************************************/
+    function candidateAirline(string memory _cName, address _cAddress) internal requireIsOperational() {
+        require(!isRegistered(_cAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        require(!isCandidate(_cAddress), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
+        proposals.push(Proposal({
+            pAddress: _cAddress,
+            pName: _cName,
+            pVoteCount: 0,
+            pActive: true
+        }));
+        addCandidate(_cAddress);
+     
+        emit Candidate(_cName);
+    }
+    
     function registerAirline(string memory _aName, address _aAddress) external requireIsOperational() {
         require(!isRegistered(_aAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
         if(aCounter < 4) {
@@ -238,7 +251,7 @@ contract FlightSuretyData {
             airlines[aCounter].aController = true;
             addController(_aAddress);
             
-            emit Registration(aCounter);
+            //emit Registration(aCounter);
 
         }
         else {
@@ -261,21 +274,9 @@ contract FlightSuretyData {
         );
         airlinesReverse[_aAddress2] = aCounter; 
         register(_aAddress2);
+        removeCandidate(_aAddress2);
 
         emit Registration(aCounter);
-    }
-
-    function candidateAirline(string memory _cName, address _cAddress) internal requireIsOperational() {
-        require(!isRegistered(_cAddress), "ERROR: AIRLINE IS ALREADY REGISTERED");
-        require(!isCandidate(_cAddress), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
-        proposals.push(Proposal({
-            pAddress: _cAddress,
-            pName: _cName,
-            pVoteCount: 0
-        }));
-        addCandidate(_cAddress);
-     
-        emit Candidate(_cName);
     }
 
 
@@ -317,6 +318,7 @@ contract FlightSuretyData {
                 result = (proposals[p].pVoteCount * 100) / aCounter;
                 if(result >= 50){
                    registerAirlineVote(_vName, _vAddress);
+                   proposals[p].pActive = false;
                 }
                 break;
             }
@@ -327,12 +329,18 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                              SMART CONTRACT BUYING FUNCTIONS                             */
     /********************************************************************************************/
-   /**
-    * @dev Buy insurance for a flight
-    *
-    */   
-    function buy() external payable {
-        
+    function buy(bytes32 _iFlight) external payable {
+        contractOwner.transfer(msg.value);
+        iCounter ++;
+        insurances[iCounter] = Insurance(
+            {
+                iId: iCounter,
+                iPassengerAddress: msg.sender,
+                iFlight: _iFlight,
+                iPaid: 0
+            }
+        );
+        flightTrackList[msg.sender].push(iCounter); 
     }
 
     /**
