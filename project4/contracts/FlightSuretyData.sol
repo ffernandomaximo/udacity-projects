@@ -92,6 +92,7 @@ contract FlightSuretyData {
     mapping(uint => Insurance) private insurances;
     mapping(address => uint[]) public flightTrackList; // .push as you go
     uint iCounter;
+    uint insuranceLimitPrice = 1 ether;
 
     /********************************************************************************************/
     /*                                       CONSTRUCTOR DEFINITION                             */
@@ -155,12 +156,23 @@ contract FlightSuretyData {
         _;
     }
   
-    modifier checkValue() {
-        uint amountToReturn = msg.value - participantFund;
-        contractOwner.transfer(amountToReturn);
+    modifier checkParticipantValue() {
+        if(msg.value > participantFund){
+            uint amountToReturn = msg.value - participantFund;
+            (bool success, ) = msg.sender.call{value:amountToReturn}("");
+            require(success, "TRANSFER FAILED");
+        }
         _;
     }
 
+    modifier checkPassengerValue() {
+        if(msg.value > insuranceLimitPrice){
+            uint amountToReturn = msg.value - insuranceLimitPrice;
+            (bool success, ) = msg.sender.call{value:amountToReturn}("");
+            require(success, "TRANSFER FAILED");
+        }
+        _;
+    }
 
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
@@ -283,11 +295,12 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                          SMART CONTRACT PARTICIPANT FUNCTIONS                            */
     /********************************************************************************************/
-    function fund() public payable paidEnough(participantFund) checkValue() {
+    function fund() public payable paidEnough(participantFund) checkParticipantValue() requireIsOperational() {
         require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
         require(!isParticipant(msg.sender), "ERROR: CALLER IS ALREADY A PARTICIPANT");
         uint i = airlinesReverse[msg.sender];
-        contractOwner.transfer(participantFund);
+        (bool success, ) = msg.sender.call{value:participantFund}("");
+        require(success, "TRANSFER FAILED");
         airlines[i].aParticipant = true;
         addParticipant(msg.sender);
     
@@ -298,7 +311,7 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                              SMART CONTRACT VOTING FUNCTIONS                             */
     /********************************************************************************************/
-    function vote(string memory _vName, address _vAddress) public {
+    function vote(string memory _vName, address _vAddress) public requireIsOperational() {
         require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
         require(isCandidate(_vAddress), "ERROR: AIRLINE VOTED IS NOT A CANDIDATE");
         bool found = false;
@@ -329,8 +342,9 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                              SMART CONTRACT BUYING FUNCTIONS                             */
     /********************************************************************************************/
-    function buy(bytes32 _iFlight) external payable {
-        contractOwner.transfer(msg.value);
+    function buy(bytes32 _iFlight) external payable checkPassengerValue() requireIsOperational() {
+        (bool success, ) = msg.sender.call{value:msg.value}("");
+        require(success, "TRANSFER FAILED");
         iCounter ++;
         insurances[iCounter] = Insurance(
             {
