@@ -71,7 +71,7 @@ contract FlightSuretyData {
     }
 
     /********************************************************************************************/
-    /*                                 DATA VARIABLES - AIRLINE                                 */
+    /*                                      AIRLINE VARIABLES                                   */
     /********************************************************************************************/
     address payable contractOwner;              // ACCOUNT USED TO DEPLOY CONTRACT
     bool private operational = true;            // BLOCKS ALL STATE CHANGES THROUGHOUT THE CONTRACT IF FALSE
@@ -88,8 +88,8 @@ contract FlightSuretyData {
         uint    aFundAvailable;
         uint    aFundCommitted;
     }
-    mapping(uint => Airline) private airlines;
-    mapping(address => uint) private airlinesReverse;
+    mapping(address => Airline) private airlines;
+
     uint aCounter;
 
 
@@ -103,12 +103,10 @@ contract FlightSuretyData {
     }
     mapping(bytes32 => Flight) private flights;
     mapping(uint => bytes32) private flightsReverse;
-    mapping(string => Airline) private flightsAirline;
     uint fCounter;
 
-
     /********************************************************************************************/
-    /*                                  DATA VARIABLES - VOTING                                 */
+    /*                             CANDIDATE AIRLINE VARIABLES                                  */
     /********************************************************************************************/
     struct Proposal {
         address pAddress;                       // ADDRESS
@@ -121,17 +119,25 @@ contract FlightSuretyData {
 
 
     /********************************************************************************************/
+    /*                                    PASSENGER VARIABLES                                   */
+    /********************************************************************************************/
+    mapping(address => uint) private passengers;
+
+
+    /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
     struct Insurance {
         bytes32 fFlightKey;
-        address payable iPassengerAddress;
+        address payable psAddress;
         uint iAmountPaid;
+        bool iActive;
     }
     mapping(bytes32 => Insurance) private insurances;
     mapping(uint => bytes32) private insurancesReverse;
-    function getInsuranceKey(address _iPassengerAddress, bytes32 _fFlightKey) private pure returns(bytes32) {
-        bytes32 _addressToBytes32 = bytes32(uint256(uint160(_iPassengerAddress)) << 96);
+    
+    function getInsuranceKey(bytes32 _fFlightKey) private view returns(bytes32) {
+        bytes32 _addressToBytes32 = bytes32(uint256(uint160(msg.sender)) << 96);
         return keccak256(abi.encodePacked(_addressToBytes32, _fFlightKey));
     }
     uint iCounter;
@@ -145,7 +151,7 @@ contract FlightSuretyData {
         aCounter = 1;
         address _firsAAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
         string memory _firstName = "Air New Zealand";
-        airlines[aCounter] = Airline(
+        airlines[_firsAAddress] = Airline(
             {
                 aId: aCounter,
                 aName: _firstName,
@@ -288,7 +294,7 @@ contract FlightSuretyData {
             require(msg.sender == contractOwner || isController(msg.sender), "ERROR: CALLER IS NOT CONTROLLER");
 
             aCounter ++;
-            airlines[aCounter] = Airline(
+            airlines[_aAddress] = Airline(
                 {
                     aId: aCounter,
                     aName: _aName,
@@ -300,9 +306,8 @@ contract FlightSuretyData {
                     aFundCommitted: 0
                 }
             );
-            airlinesReverse[_aAddress] = aCounter; 
             register(_aAddress);
-            airlines[aCounter].aController = true;
+            airlines[_aAddress].aController = true;
             addController(_aAddress);
             
             //emit Registration(aCounter);
@@ -317,7 +322,7 @@ contract FlightSuretyData {
         require(!isRegistered(_aAddress2), "ERROR: AIRLINE IS ALREADY REGISTERED");
 
         aCounter ++;
-        airlines[aCounter] = Airline(
+        airlines[_aAddress2] = Airline(
             {
                 aId: aCounter,
                 aName: _aName2,
@@ -329,7 +334,6 @@ contract FlightSuretyData {
                 aFundCommitted: 0
             }
         );
-        airlinesReverse[_aAddress2] = aCounter; 
         register(_aAddress2);
         removeCandidate(_aAddress2);
 
@@ -346,12 +350,11 @@ contract FlightSuretyData {
 
         contractOwner.transfer(msg.value);
 
-        uint _aId = airlinesReverse[msg.sender];
-        airlines[_aId].aParticipant = true;
-        airlines[_aId].aFundAvailable = msg.value;
+        airlines[msg.sender].aParticipant = true;
+        airlines[msg.sender].aFundAvailable = msg.value;
         addParticipant(msg.sender);
     
-        emit Funding(_aId);
+        //emit Funding(msg.sender);
     }
 
 
@@ -439,31 +442,40 @@ contract FlightSuretyData {
         require(keccak256(abi.encodePacked(flights[flightKey].fFlight)) == keccak256(abi.encodePacked(_flight)), "ERROR: FLIGHT NOT FOUND");
         
         address _aAddress = flights[flightKey].aAddress;
-        uint _aId = airlinesReverse[_aAddress];
 
-        bytes32 insuranceKey = getInsuranceKey(msg.sender, flightKey);
+        bytes32 _insuranceKey = getInsuranceKey(flightKey);
         
-        require(insurances[insuranceKey].fFlightKey != flightKey, "ERROR: PASSENGER ALREADY BOUGHT THIS FLIGHT INSURANCE");
+        require(insurances[_insuranceKey].fFlightKey != flightKey, "ERROR: PASSENGER ALREADY BOUGHT THIS FLIGHT INSURANCE");
         contractOwner.transfer(msg.value);
         iCounter ++;
-        insurances[insuranceKey] = Insurance(
+        insurances[_insuranceKey] = Insurance(
             {
                 fFlightKey: flightKey,
-                iPassengerAddress: payable(msg.sender),
-                iAmountPaid: msg.value
+                psAddress: payable(msg.sender),
+                iAmountPaid: msg.value,
+                iActive: true
             }
         );
-        insurancesReverse[iCounter] = insuranceKey;
+        insurancesReverse[iCounter] = _insuranceKey;
 
-        airlines[_aId].aFundAvailable = SafeMath.add(airlines[_aId].aFundAvailable, msg.value);
-        airlines[_aId].aFundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
+        airlines[_aAddress].aFundAvailable = SafeMath.add(airlines[_aAddress].aFundAvailable, msg.value);
+        airlines[_aAddress].aFundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
         
     }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    function creditInsurees() external pure {
+    function creditInsurees(bytes32 _fFlightKey) external {
+        address _aAddress = flights[_fFlightKey].aAddress;
+        uint _amountPaid = insurances[_fFlightKey].iAmountPaid;
+        uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
+
+        uint _fundAvailable = airlines[_aAddress].aFundAvailable;
+        uint _fundCommitted = airlines[_aAddress].aFundCommitted;
+        airlines[_aAddress].aFundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
+        airlines[_aAddress].aFundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
+        
 
     }
     
@@ -472,7 +484,8 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
     */
-    function pay() external pure {
+    function pay() public payable requireIsOperational() {
+        payable(msg.sender).transfer(passengers[msg.sender]);
     }
 
    /**
@@ -489,28 +502,27 @@ contract FlightSuretyData {
     * @dev Fallback function for funding smart contract.
     *
     */
-    // function() 
-    //                         external 
-    //                         payable 
-    // {
-    //     fund();
-    // }
+    fallback() external payable {
+    }
+    
+    receive() external payable {
+    }
 
 
     /********************************************************************************************/
     /*                               SMART CONTRACT CHECK FUNCTIONS                             */
     /********************************************************************************************/
-    function checkAirlines(uint _aId) public view returns(string memory name_, address address_, 
+    function checkAirlines(address _aAddress) public view returns(string memory name_, address address_, 
         bool registered_, bool participant_, bool controller_, 
         uint fundavailable_, uint fundcommitted_) {
         
-        return(airlines[_aId].aName
-            , airlines[_aId].aAddress
-            , airlines[_aId].aRegistered
-            , airlines[_aId].aParticipant
-            , airlines[_aId].aController
-            , airlines[_aId].aFundAvailable
-            , airlines[_aId].aFundCommitted
+        return(airlines[_aAddress].aName
+            , airlines[_aAddress].aAddress
+            , airlines[_aAddress].aRegistered
+            , airlines[_aAddress].aParticipant
+            , airlines[_aAddress].aController
+            , airlines[_aAddress].aFundAvailable
+            , airlines[_aAddress].aFundCommitted
         );
     
     }
@@ -534,7 +546,7 @@ contract FlightSuretyData {
     function checkInsurances(uint _iId) public view returns(bytes32 flightKey_, address passengerAddress_, uint amountPaid_) {
         bytes32 _insuranceKey = insurancesReverse[_iId];
         return(insurances[_insuranceKey].fFlightKey
-            , insurances[_insuranceKey].iPassengerAddress
+            , insurances[_insuranceKey].psAddress
             , insurances[_insuranceKey].iAmountPaid
         );
     }
