@@ -27,7 +27,7 @@ contract FlightSuretyData {
     /********************************************************************************************/
     using DateLib for DateLib.DateTime;         //LIBRARY USED TO CONVERT HUMAN DATE TIME TO EPOCH TIMESTAMP
 
-    function getDateTime(uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) internal pure returns(uint) {
+    function getDateTime(uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public pure returns(uint) {
         uint unixDate = DateLib.toUnixTimestamp(DateLib.DateTime({
             year: _year,
             month: _month,
@@ -92,7 +92,7 @@ contract FlightSuretyData {
         uint            fundAvailable;
         uint            fundCommitted;
     }
-    mapping(address => Airline) private airlines;
+    mapping(address => Airline) public airlines;
     uint aCounter;
 
 
@@ -107,7 +107,7 @@ contract FlightSuretyData {
         uint256         updatedTimestamp;
         address         airlineAddress;
     }
-    mapping(bytes32 => Flight) private flights;
+    mapping(bytes32 => Flight) public flights;
     mapping(uint => bytes32) private flightsReverse;
     uint fCounter;
 
@@ -122,7 +122,7 @@ contract FlightSuretyData {
         bool            active;
     }
     Proposal[] private proposals;
-    mapping(address => address[]) private voters;
+    mapping(address => address[]) voters;
 
 
     /********************************************************************************************/
@@ -137,7 +137,7 @@ contract FlightSuretyData {
         bool            claimable;
         bool            active;
     }
-    mapping(bytes32 => Insurance) private insurances;
+    mapping(bytes32 => Insurance) insurances;
     mapping(uint => bytes32) private insurancesReverse;
     uint iCounter;
 
@@ -434,6 +434,31 @@ contract FlightSuretyData {
         flightsReverse[fCounter] = flightKey;
     
     }
+
+    function checkFlight(bytes32 _flightKey) external view returns(bool) {
+        bool _isRegistered;
+        if (flights[_flightKey].airlineAddress == address(0)) {
+            _isRegistered = false;
+        }
+        else {
+            _isRegistered = true;
+        }
+
+        return _isRegistered;
+    }
+
+    function updateFlightTimestamp(bytes32 _flightKey, uint256 _timestamp) external {
+        flights[_flightKey].updatedTimestamp = _timestamp;
+    }
+
+    function updateFlightStatus(bytes32 _flightKey, uint8 _statusCode) external {
+        flights[_flightKey].statusCode = _statusCode;
+    }
+
+    function getFlightStatus(bytes32 _flightKey) external view returns(uint8) {
+        return flights[_flightKey].statusCode;
+    }
+
 
 
     /********************************************************************************************/
