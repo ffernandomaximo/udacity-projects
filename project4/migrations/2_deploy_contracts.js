@@ -6,12 +6,16 @@ const Ownable = artifacts.require("Ownable");
 
 const fs = require('fs');
 
-module.exports = function(deployer) {
-    deployer.deploy(DateLib);
-    deployer.deploy(RoleLib);
+module.exports = function (deployer) {
     deployer.deploy(Ownable);
+    
+    deployer.deploy(RoleLib);
+
+    deployer.deploy(DateLib);
+    deployer.link(DateLib, FlightSuretyData);
+
 //    deployer.deploy(FlightSuretyData);
-};  
+};
 
 /*    
     let firstAirline = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 // Import Libraries
 import "./DateLib.sol";
 
-import "./RoleLib.sol";
+import "./accesscontrol/RoleLib.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
