@@ -1,21 +1,80 @@
-/*
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+
+import "./DateLib.sol";
+import "./RoleLib.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 // import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-/************************************************** */
-/* FlightSurety Smart Contract                      */
-/************************************************** */
-/*
 contract FlightSuretyApp {
     using SafeMath for uint256;
+
+    bool private operational = true;            // BLOCKS ALL STATE CHANGES THROUGHOUT THE CONTRACT IF FALSE
+    address[] multiCalls = new address[](0);
+    uint M = 3;
+
+
+    /********************************************************************************************/
+    /*                                          DATELIB                                         */
+    /********************************************************************************************/
+    using DateLib for DateLib.DateTime;         //LIBRARY USED TO CONVERT HUMAN DATE TIME TO EPOCH TIMESTAMP
+
+    function getDateTime(uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public pure returns(uint) {
+        uint unixDate = DateLib.toUnixTimestamp(DateLib.DateTime({
+            year: _year,
+            month: _month,
+            day: _day,
+            hour: _hour,
+            minute: _minute,
+            second: 0,
+            ms: 0,
+            weekday: 0
+        }));
+        
+        return unixDate;
+    }
+
+    
+    /********************************************************************************************/
+    /*                                         ROLELIB                                          */
+    /********************************************************************************************/
+    using RoleLib for RoleLib.Role;             //LIBRARY USED TO CLASSIFY AIRLINES INTO DIFFERENT ROLES
+
+    RoleLib.Role private registers;
+    RoleLib.Role private controllers;
+    RoleLib.Role private participants;
+    RoleLib.Role private candidates;            
+
+    function register(address _address) internal {
+        require(!isRegistered(_address), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        registers.add(_address);
+    }
+
+    function addController(address _address) internal {
+        require(!isController(_address), "ERROR: AIRLINE IS ALREADY A CONTROLLER");
+        controllers.add(_address);
+    }
+
+    function addParticipant(address _address) internal {
+        require(!isParticipant(_address), "ERROR: AIRLINE IS ALREADY A PARTICIPANT");
+        participants.add(_address);
+    }
+    
+    function addCandidate(address _address) internal {
+        require(!isCandidate(_address), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
+        candidates.add(_address);
+    }
+
+    function removeCandidate(address _address) internal {
+        require(isCandidate(_address), "ERROR: AIRLINE IS NOT A CANDIDATE");
+        candidates.remove(_address);
+    }
+
 
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
-/*
     FlightSuretyData flightSuretyData;
     // Flight status codees
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
@@ -26,6 +85,8 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
     address private contractOwner;          // Account used to deploy contract
+
+    uint aCounter = 1;
 
     // // flights data
     // struct Flight {
@@ -41,35 +102,82 @@ contract FlightSuretyApp {
 
 
     /********************************************************************************************/
+    /*                             CANDIDATE AIRLINE VARIABLES                                  */
+    /********************************************************************************************/
+    struct Proposal {
+        address         proposedAddress;
+        string          proposedName;
+        uint            voteCount;
+        bool            active;
+    }
+    Proposal[] private proposals;
+    mapping(address => address[]) voters;
+
+
+    /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
     /********************************************************************************************/
-/*    
+    modifier requireIsOperational() {
+        require(isOperational(), "CONTRACT IS CURRENTLY NOT OPERATIONAL");
+        _;
+    }
+    
     modifier requireContractOwner() {
         require(msg.sender == contractOwner, "CALLER IS NOT CONTRACT OWNER");
         _;
     }
 
+    modifier requireController() {
+        require(msg.sender == contractOwner || controllers.has(msg.sender), "CALLER IS NOT A CONTROLLER");
+        _;
+    }
+
+
     /********************************************************************************************/
     /*                                       CONSTRUCTOR                                        */
     /********************************************************************************************/
- /*   
     constructor(address dataContract) {
         contractOwner = msg.sender;
         flightSuretyData = FlightSuretyData(dataContract);
+        address _firstAirlineAddress = flightSuretyData.getFirstAirlineAddress();
+        register(_firstAirlineAddress);
+        addController(_firstAirlineAddress);
     }
 
-    /****************************************************************************************** */
-    /*                                       FUNCTION MODIFIERS                                 */
+    // function setFirstController() external requireContractOwner() {
+    //     address _firstAirlineAddress = flightSuretyData.getFirstAirlineAddress();
+    //     register(_firstAirlineAddress);
+    //     addController(_firstAirlineAddress);
+    // }
+
+
     /********************************************************************************************/
-    /**
-    * @dev Modifier that requires the current account to have funded at least 10 eth
-    */
+    /*                                  OPERATIONAL STATUS CONTROL                              */
+    /********************************************************************************************/
+    function setOperatingStatus(bool mode) external requireController() {
+        require(mode != operational, "NEW MODE MUST BE DIFERENT FROM THE EXISITNG");
+
+        bool isDuplicate = false;
+        for(uint c = 0; c < multiCalls.length; c++) {
+            if (multiCalls[c] == msg.sender) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        
+        require(!isDuplicate, "ERROR: CALLER HAS ALREADY CALLED THIS FUNCTION");
+
+        multiCalls.push(msg.sender);
+        if (multiCalls.length >= M) {
+            operational = mode;
+            multiCalls = new address[](0);
+        }
+    }
 
 
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
-/*
     function isOperational() public view returns(bool) {
         return flightSuretyData.isOperational();
     }
@@ -78,43 +186,149 @@ contract FlightSuretyApp {
         flightSuretyData = FlightSuretyData(dataContract);
     }
 
-
-    /********************************************************************************************/
-    /*                                     SMART CONTRACT FUNCTIONS                             */
-    /********************************************************************************************/
-/*
-    function registerAirline(string memory _name, address _address) external {
-        flightSuretyData.registerAirline(_name, _address);
+    function isController(address _address) public view returns(bool) {
+        //return controllers.has(_address);
+        return (_address == contractOwner || controllers.has(_address));
     }
 
-    function checkAirline(address _address) public view returns(bool) {
-        return flightSuretyData.isRegistered(_address);
+    function isRegistered(address _address) public view returns(bool) {
+        return registers.has(_address);
     }
 
+    function isParticipant(address _address) public view returns(bool) {
+        return participants.has(_address); 
+    }
+
+    function isCandidate(address _address) public view returns(bool) {
+        return candidates.has(_address);
+    }
+
+
+    /********************************************************************************************/
+    /*                                        AIRLINE FUNCTIONS                                 */
+    /********************************************************************************************/
+    function registerAirline(string memory _name, address _address) public requireIsOperational() {
+        require(!isRegistered(_address), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        
+        if(aCounter < 4) {
+            require(msg.sender == contractOwner || isController(msg.sender), "ERROR: CALLER IS NOT CONTROLLER");
+            
+            aCounter ++;
+            flightSuretyData.registerAirline(_name, _address, aCounter, true);
+            
+            register(_address);
+            addController(_address);
+        
+        } else {
+            candidateAirline(_name, _address);
+
+            addCandidate(_address);
+        }
+    }
+
+    function candidateAirline(string memory _name, address _address) public requireIsOperational() {
+        require(!isRegistered(_address), "ERROR: AIRLINE IS ALREADY REGISTERED");
+        require(!isCandidate(_address), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
+        
+        proposals.push(Proposal({
+            proposedAddress: _address,
+            proposedName: _name,
+            voteCount: 0,
+            active: true
+            })
+        );
+    }
+
+    function vote(string memory _name, address _address) public requireIsOperational() {
+        require(isRegistered(msg.sender), "ERROR: VOTER IS NOT REGISTERED");
+        require(!isRegistered(_address), "ERROR: AIRLINE VOTED IS ALREADY REGISTERED");
+        require(isCandidate(_address), "ERROR: AIRLINE VOTED IS NOT A CANDIDATE");
+        
+        bool found = false;
+        uint result = 0;
+        for (uint v = 0; v < voters[msg.sender].length; v++) {
+            if(voters[msg.sender][v] == _address){
+                found = true;
+                revert("ERROR: CALLER ALREADY VOTED FOR THIS AIRLINE");
+            }
+        }
+        if(!found){
+            voters[msg.sender].push(_address);
+        }
+        for (uint p = 0; p < proposals.length; p++) {
+            if (proposals[p].proposedAddress == _address) {
+                proposals[p].voteCount += 1;
+                result = (proposals[p].voteCount * 100) / aCounter;
+                if(result >= 50){
+                    aCounter ++;
+                    flightSuretyData.registerAirline(_name, _address, aCounter, false);
+
+                    register(_address);
+                    removeCandidate(_address);
+                    proposals[p].active = false;
+                }
+                break;
+            }
+        }
+    }
+
+    function fund() external payable requireIsOperational() {
+        require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
+        require(!isParticipant(msg.sender), "ERROR: CALLER IS ALREADY A PARTICIPANT");
+
+        flightSuretyData.fund{value: msg.value}(msg.sender);
+
+        addParticipant(msg.sender);
+    }
+
+    function checkAirlines(address _address) external view 
+        returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {   
+        return flightSuretyData.checkAirlines(_address);
+    }
+
+    function checkCandidateAirlines() public view returns(Proposal[] memory ) {
+        return proposals;
+    }
+
+
+    /********************************************************************************************/
+    /*                                        FLIGHT FUNCTIONS                                  */
+    /********************************************************************************************/
     function registerFlight (string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
-        flightSuretyData.registerFlight(_flight, _year, _month, _day, _hour, _minute);
+        require(isParticipant(msg.sender), "ERROR: CALLER IS NOT A PARTICIPANT");
+        
+        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
+        
+        require(_timestamp > block.timestamp + 172800, "ERROR: FLIGHT TIME MUST BE AT LEAST 48 HOURS THAN NOW");
+         
+        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
+        
+        require(!flightSuretyData.checkFlight(_flightKey), "ERROR: FLIGHT ALREADY REGISTERED");
+
+        flightSuretyData.registerFlight(_flightKey, _flight, _timestamp);
 
     }
-    
-    function processFlightStatus(string memory _flight, uint256 _timestamp, uint8 _statusCode) internal {
-        bytes32 _flightKey = getFlightKey(_flight, _timestamp);
-//        require(flightSuretyData.flights[_flightKey].airlineAddress != address(0), "ERROR: FLIGHT IS NOT REGISTERED");
 
-        flightSuretyData.flights[_flightKey].updatedTimestamp = _timestamp;
-        flightSuretyData.flights[_flightKey].statusCode = _statusCode;
+    function processFlightStatus(string memory _flight, uint256 _timestamp, uint8 _statusCode) internal {
+        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
+        
+        require(flightSuretyData.checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
+
+        flightSuretyData.updateFlightTimestamp(_flightKey, _timestamp);
+        flightSuretyData.updateFlightStatus(_flightKey, _statusCode);
 
         if (_statusCode == STATUS_CODE_LATE_AIRLINE) {
             flightSuretyData.creditInsurees(_flightKey);
         }
     }
 
-
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus(address _airline, string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
         uint8 index = getRandomIndex(msg.sender);
 
-        uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
-        
+        //uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
+        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
+
         // Generate a unique key for storing the request
         bytes32 key = keccak256(abi.encodePacked(index, _airline, _flight, _timestamp));
         oracleResponses[key].requester = msg.sender;
@@ -125,16 +339,18 @@ contract FlightSuretyApp {
 
     // Query the status of any flight
     function viewFlightStatus(string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external view returns(uint8) {
-            uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
+        //uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
+        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
 
-            bytes32 _flightKey = getFlightKey(_flight, _timestamp);
-            return flightSuretyData.flights[_flightKey].statusCode;
+        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
+        return flightSuretyData.getFlightStatus(_flightKey);
     }
 
     function withdrawCredit(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public {
-        uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
+        //uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
+        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
 
-        bytes32 _flightKey = getFlightKey(_flight, _timestamp);
+        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
         flightSuretyData.pay(_flightKey);
     }
 
@@ -201,9 +417,6 @@ contract FlightSuretyApp {
         return oracles[msg.sender].indexes;
     }
 
-
-
-
     // Called by oracle when a response is available to an outstanding request
     // For the response to be accepted, there must be a pending request that is open
     // and matches one of the three Indexes randomly assigned to the oracle at the
@@ -230,8 +443,8 @@ contract FlightSuretyApp {
         }
     }
 
-    function getFlightKey(string memory flight, uint256 timestamp) internal pure returns(bytes32){
-        return keccak256(abi.encodePacked(flight, timestamp));
+    function getFlightKey(address airline, string memory flight, uint256 timestamp) pure internal returns(bytes32) {
+        return keccak256(abi.encodePacked(airline, flight, timestamp));
     }
 
     // Returns array of three non-duplicating integers from 0-9
@@ -274,15 +487,31 @@ contract FlightSuretyData {
 
 
     function isOperational() external view returns(bool) {}
+
+    function getFirstAirlineAddress() external view returns(address){}
     
-    function registerAirline(string memory _aName, address _aAddress) external {}
+    function registerAirline(string memory _name, address _address, uint _aCounter, bool _controller) external {}
+
+    function candidateAirline(string memory _name, address _address) external {}
+
+    function fund(address _address) external payable {}
     
-    function isRegistered(address _address) public view returns(bool) {}
+    function checkAirlines(address _airlineAddress) external view 
+    returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {}
+
+    function registerFlight(bytes32 _flightKey, string memory _flight, uint _timestamp) external {}
+
+    function checkFlight(bytes32 _flightKey) external view returns(bool) {}
+
+    function updateFlightTimestamp(bytes32 _flightKey, uint256 _timestamp) external {}
     
-    function registerFlight(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {}
+    function updateFlightStatus(bytes32 _flightKey, uint8 _statusCode) external {}
+
+    function getFlightStatus(bytes32 _flightKey) external view returns(uint8) {}
 
     function creditInsurees(bytes32 _flightKey) external {}
 
     function pay(bytes32 _flightKey) external {}
+
+    //function getDateTime(uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public pure returns(uint) {}
 }
-*/
