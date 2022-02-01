@@ -9,9 +9,8 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
         await config.flightSuretyData.authorizeCaller(config.flightSuretyApp.address);
     });
 
-    /****************************************************************************************/
-    /* OPERATIONS AND SETTINGS                                                              */
-    /****************************************************************************************/
+
+    /* OPERATIONS AND SETTINGS */
     it("(MULTIPARTY) HAS CORRECT INITIAL ISOPERATIONAL() VALUE", async function () {
         let status = await config.flightSuretyData.isOperational.call();
         assert.equal(status, true, "INCORRECT INITIAL OPERATING STATUS VALUE");
@@ -63,7 +62,8 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
 
     // });
 
-    
+
+    /* REGISTER AIRLINE */    
     it("ONLY CONTROLLERS CAN REGISTER NEW AIRLINES", async () => {    
         let newAirlineName2 = "Air 2";
         let newAirlineAddress2 = accounts[2];
@@ -101,13 +101,10 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
         let newAirlineAddress5 = accounts[5];
         let newAirlineName6 = "Air 6";
         let newAirlineAddress6 = accounts[6];
-        let newAirlineName7 = "Air 7";
-        let newAirlineAddress7 = accounts[7];
         try {
             await config.flightSuretyApp.registerAirline(newAirlineName4, newAirlineAddress4, {from: config.owner});
             await config.flightSuretyApp.registerAirline(newAirlineName5, newAirlineAddress5, {from: config.owner});
             await config.flightSuretyApp.registerAirline(newAirlineName6, newAirlineAddress6, {from: config.owner});
-            await config.flightSuretyApp.registerAirline(newAirlineName7, newAirlineAddress7, {from: config.owner});
         }
         catch(e) {
             console.log(e);
@@ -118,6 +115,7 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
     });
 
 
+    /* VOTING AIRLINE */
     it("REGISTERING NEW AIRLINE THROUGH MULTI-PARTY CONSENSUS", async () => {
         let airlineAddress2 = accounts[2];
         let airlineAddress3 = accounts[3];
@@ -154,9 +152,10 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
     });
 
 
+    /* FUNDING AIRLINE */
     it("AIRLINE CAN BE REGISTERED, BUT DOES NOT PARTICIPATE IN CONTRACT UNTIL IT SUBMITS FUNDING OF 10 ETHER", async () => {
         let airlineAddress2 = accounts[2];
-        let payment  = web3.utils.toWei("10", "ether").toString();
+        let payment = web3.utils.toWei("10", "ether").toString();
         try {
             await config.flightSuretyApp.fund({from: airlineAddress2, value: payment, gasPrice: 0, gas:230000});
         }
@@ -168,17 +167,45 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
         assert.equal(result, true, "AIRLINE IS A PARTICIPANT AFTER FUNDING 10 ETHER");
     });
 
-    // it("NOT ENOUGH FUNDS TO BECOME PARTICIPANT", async () => {    
-    //     try {
-    //         await config.flightSuretyApp.registerAirline(newAirlineName2, newAirlineAddress2, {from: newAirlineAddress});
-    //     }
-    //     catch(e) {
-    //         console.log("DIDN'T WORK")
-    //     }
-    //     let result = await config.flightSuretyApp.isRegistered.call(newAirlineAddress2);
 
-    //     assert.equal(result, true, "CONTROLLERS SHOULD BE ABLE TO REGISTER NEW AIRLINES");
-    // });
+    /* REGISTER FLIGHT */
+    it("PARTICIPANT AIRLINES CAN REGISTER NEW FLIGHTS", async () => {
+        let airlineAddress2 = accounts[2];
+        let flight  = "ANZ 123";
+        let day = 10;
+        let month = 10;
+        let year = 2030;
+        let hour = 10;
+        let minute = 00;
+        try {
+            await config.flightSuretyApp.registerFlight(flight, year, month, day, hour, minute, {from: airlineAddress2});
+        }
+        catch(e) {
+            console.log(e);
+        }
+        let timestamp = await config.flightSuretyApp.getDateTime(year, month, day, hour, minute);
+        let flightKey = await config.flightSuretyApp.getFlightKey(airlineAddress2, flight, timestamp);
+        let result = await config.flightSuretyApp.checkFlight.call(flightKey);
 
+        assert.equal(result, true, "FLIGHT SHOULD BE REGISTERED");
+    });
+
+
+    /* BUY FLIGHT *//*
+    it("PASSENGER CAN BUY A FLIGHT", async () => {   
+        let newPassengerAddress = accounts[7]; 
+        let payment = web3.utils.toWei("1", "ether").toString();
+        let flightOption = 1;
+        try {
+            await config.flightSuretyApp.buy(flightOption, {from: newPassengerAddress, value: payment, gasPrice: 0, gas:230000});
+        }
+        catch(e) {
+            console.log(e);
+        }
+        let result = await config.flightSuretyApp.checkInsuranceAmountPaid.call(flightOption);
+
+        assert.equal(result, payment, "CONTROLLERS SHOULD BE ABLE TO REGISTER NEW AIRLINES");
+    });
+*/
 
 });

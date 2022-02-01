@@ -31,27 +31,12 @@ contract FlightSuretyData {
     address _firstAirlineAddress = 0xF258b0a25eE7D6f02a9a1118afdF77CaC6D72784;
     string _firstName = "Air New Zealand";
 
-    /********************************************************************************************/
-    /*                                      FLIGHT VARIABLES                                    */
-    /********************************************************************************************/
-    struct Flight {
-        bytes32         flightKey;
-        string          flight;
-        bool            active;
-        uint8           statusCode;
-        uint256         updatedTimestamp;
-        address         airlineAddress;
-    }
-    mapping(bytes32 => Flight) public flights;
-    mapping(uint => bytes32) private flightsReverse;
-    uint fCounter;
-
 
     /********************************************************************************************/
     /*                                  INSURANCE VARIABLES                                     */
     /********************************************************************************************/
     struct Insurance {
-        bytes32         insuranceKey;
+        uint            insuranceId;
         bytes32         flightKey;
         address payable passengerAddress;
         uint            amountPaid;
@@ -60,7 +45,8 @@ contract FlightSuretyData {
         bool            active;
     }
     mapping(bytes32 => Insurance) insurances;
-    mapping(uint => bytes32) private insurancesReverse;
+    mapping(uint => bytes32) insurancesReverse;
+    mapping(address => bytes32[]) passengerInsurances;
     uint iCounter;
 
 
@@ -209,118 +195,63 @@ contract FlightSuretyData {
 
 
     /********************************************************************************************/
-    /*                          SMART CONTRACT REGISTER FLIGHT FUNCTIONS                        */
-    /********************************************************************************************/
-    function registerFlight(bytes32 _flightKey, string memory _flight, uint _timestamp) external requireAuthorizedCaller() requireIsOperational() {
-        flights[_flightKey] = Flight({
-            flightKey: _flightKey,
-            flight: _flight,
-            active: true,
-            statusCode: 0,
-            updatedTimestamp: _timestamp,
-            airlineAddress: msg.sender
-        });
-        
-        fCounter++;
-        flightsReverse[fCounter] = _flightKey;
-    
-    }
-
-    function checkFlight(bytes32 _flightKey) external view requireAuthorizedCaller() requireIsOperational() returns(bool) {
-        bool _flightRegistered;
-        
-        if (flights[_flightKey].airlineAddress == address(0)) {
-            _flightRegistered = false;
-        }
-        else {
-            _flightRegistered = true;
-        }
-
-        return _flightRegistered;
-    }
-
-    function updateFlightTimestamp(bytes32 _flightKey, uint256 _timestamp) external requireAuthorizedCaller() requireIsOperational()  {
-        flights[_flightKey].updatedTimestamp = _timestamp;
-    }
-
-    function updateFlightStatus(bytes32 _flightKey, uint8 _statusCode) external requireAuthorizedCaller() requireIsOperational()  {
-        flights[_flightKey].statusCode = _statusCode;
-    }
-
-    function getFlightStatus(bytes32 _flightKey) external view requireAuthorizedCaller() requireIsOperational() returns(uint8) {
-        return flights[_flightKey].statusCode;
-    }
-
-
-
-    /********************************************************************************************/
     /*                              SMART CONTRACT BUYING FUNCTIONS                             */
     /********************************************************************************************/
-    //function buy(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public payable checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {
-    // // // // function buy(string memory _flight, uint _timestamp) public payable checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {
-    // // // //     require(!isRegistered(msg.sender) && msg.sender != contractOwner, "ERROR: CALLER IS NOT ALLOWED TO BUY INSURANCE");
+    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {        
+        bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
         
-    // // // //     //uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
+        require(insurances[_insuranceKey].flightKey != _flightKey, "ERROR: PASSENGER ALREADY BOUGHT THIS FLIGHT INSURANCE");
+        contractOwner.transfer(msg.value);
         
-    // // // //     bytes32 flightKey = getFlightKey(//msg.sender, 
-    // // // //         _flight, _timestamp);
-        
-    // // // //     require(keccak256(abi.encodePacked(flights[flightKey].flight)) == keccak256(abi.encodePacked(_flight)), "ERROR: FLIGHT NOT FOUND");
-        
-    // // // //     address _airlineAddress = flights[flightKey].airlineAddress;
+        iCounter ++;
+        insurances[_insuranceKey] = Insurance(
+            {
+                insuranceId: iCounter,
+                flightKey: _flightKey,
+                passengerAddress: payable(_passengerAddress),
+                amountPaid: msg.value,
+                amountAvailable: 0,
+                claimable: false,
+                active: true
+            }
+        );
+        insurancesReverse[iCounter] = _insuranceKey;
+        passengerInsurances[_passengerAddress].push(_insuranceKey);
 
-    // // // //     bytes32 _insuranceKey = getInsuranceKey(msg.sender, flightKey);
+        airlines[_airlineAddress].fundAvailable = SafeMath.add(airlines[_airlineAddress].fundAvailable, msg.value);
+        airlines[_airlineAddress].fundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
         
-    // // // //     require(insurances[_insuranceKey].flightKey != flightKey, "ERROR: PASSENGER ALREADY BOUGHT THIS FLIGHT INSURANCE");
-    // // // //     contractOwner.transfer(msg.value);
-    // // // //     iCounter ++;
-    // // // //     insurances[_insuranceKey] = Insurance(
-    // // // //         {
-    // // // //             insuranceKey: _insuranceKey,
-    // // // //             flightKey: flightKey,
-    // // // //             passengerAddress: payable(msg.sender),
-    // // // //             amountPaid: msg.value,
-    // // // //             amountAvailable: 0,
-    // // // //             claimable: false,
-    // // // //             active: true
-    // // // //         }
-    // // // //     );
-    // // // //     insurancesReverse[iCounter] = _insuranceKey;
-
-    // // // //     airlines[_airlineAddress].fundAvailable = SafeMath.add(airlines[_airlineAddress].fundAvailable, msg.value);
-    // // // //     airlines[_airlineAddress].fundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
-        
-    // // // // }
+    }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    function creditInsurees(bytes32 _flightKey) external requireAuthorizedCaller() requireIsOperational() {
-        bytes32 _insuranceKey = getInsuranceKey(msg.sender, _flightKey);
-        require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
-        require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
+    // function creditInsurees(bytes32 _flightKey) external requireAuthorizedCaller() requireIsOperational() {
+    //     bytes32 _insuranceKey = getInsuranceKey(msg.sender, _flightKey);
+    //     require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
+    //     require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
 
-        address _airlineAddress = flights[_flightKey].airlineAddress;
-        uint _amountPaid = insurances[_insuranceKey].amountPaid;
-        uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
+    //     address _airlineAddress = flights[_flightKey].airlineAddress;
+    //     uint _amountPaid = insurances[_insuranceKey].amountPaid;
+    //     uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
 
-        uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
-        uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
+    //     uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
+    //     uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
 
-        insurances[_insuranceKey].amountAvailable = _amountToCredit;
+    //     insurances[_insuranceKey].amountAvailable = _amountToCredit;
 
-        airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
-        airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
-    }
+    //     airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
+    //     airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
+    // }
     
 
     /**
      *  @dev Transfers eligible payout funds to insuree
      *
     */
-    function pay(bytes32 _flightKey) public payable requireIsOperational() {
-        bytes32 _insuranceKey = getInsuranceKey(msg.sender, _flightKey);
-        payable(msg.sender).transfer(insurances[_insuranceKey].amountAvailable);
+    function pay(address _passengerAddress, bytes32 _flightKey) public payable requireIsOperational() {
+        bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
+        payable(_passengerAddress).transfer(insurances[_insuranceKey].amountAvailable);
     }
 
    /**
@@ -357,25 +288,14 @@ contract FlightSuretyData {
         );
     
     }
-
-    function checkFlights(uint _flightId) external view requireAuthorizedCaller() requireIsOperational()
-        returns(bytes32 key_, string memory flight_, bool active_, uint8 status_, uint256 timestamp_, address address_) 
+    
+    function checkInsurances(uint _insuranceId) external view requireAuthorizedCaller() requireIsOperational()
+        returns(bytes32 insuranceKey_, bytes32 flightKey_, address passengerAddress_, uint amountPaid_, uint amountAvailable_, bool claimable_, bool active_) 
     {
-        bytes32 _flightKey = flightsReverse[_flightId];
-        return(flights[_flightKey].flightKey
-            , flights[_flightKey].flight
-            , flights[_flightKey].active
-            , flights[_flightKey].statusCode
-            , flights[_flightKey].updatedTimestamp        
-            , flights[_flightKey].airlineAddress
-        );
-    }
-
-    function checkInsurances(uint _iId) external view requireAuthorizedCaller() requireIsOperational()
-        returns(bytes32 flightKey_, address passengerAddress_, uint amountPaid_, uint amountAvailable_, bool claimable_, bool active_) 
-    {
-        bytes32 _insuranceKey = insurancesReverse[_iId];
-        return(insurances[_insuranceKey].flightKey
+        bytes32 _insuranceKey = insurancesReverse[_insuranceId];
+        require(insurances[_insuranceKey].flightKey != 0, "ERROR: INSURANCE NOT FOUND");
+        return(_insuranceKey
+            , insurances[_insuranceKey].flightKey
             , insurances[_insuranceKey].passengerAddress
             , insurances[_insuranceKey].amountPaid
             , insurances[_insuranceKey].amountAvailable
@@ -383,4 +303,15 @@ contract FlightSuretyData {
             , insurances[_insuranceKey].active
         );
     }
+
+    function checkPassengerInsurances(address _passengerAddress) external view requireAuthorizedCaller() requireIsOperational() returns(bytes32[] memory) {
+        return passengerInsurances[_passengerAddress];
+    }
+
+    function checkInsuranceAmountPaid(address _passengerAddress, bytes32 _flightKey) external view requireIsOperational() returns(uint amountPaid_) {
+        bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
+        require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
+        return insurances[_insuranceKey].amountPaid;
+    }
+
 }

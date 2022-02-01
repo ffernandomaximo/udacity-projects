@@ -34,7 +34,6 @@ contract FlightSuretyApp {
         
         return unixDate;
     }
-
     
     /********************************************************************************************/
     /*                                         ROLELIB                                          */
@@ -87,18 +86,19 @@ contract FlightSuretyApp {
     address private contractOwner;          // Account used to deploy contract
 
     uint aCounter = 1;
+    uint fCounter = 0;    
 
-    // // flights data
-    // struct Flight {
-    //     bool isRegistered;
-    //     string flightCode;
-    //     string destination;
-    //     uint8 statusCode;
-    //     uint256 updatedTimestamp;
-    //     address airline;
-    // }
-    // mapping(bytes32 => Flight) private flights;
-    // mapping(address => address[]) private airlineVoters;
+    struct Flight{
+        string          flight;
+        uint            flightId;
+        bool            active;
+        bool            isRegistered;
+        uint8           statusCode;
+        uint256         updatedTimestamp;
+        address         airlineAddress;
+    }
+    mapping(bytes32 => Flight) private flights;
+    mapping(uint => bytes32) public flightsReverse;
 
 
     /********************************************************************************************/
@@ -143,12 +143,6 @@ contract FlightSuretyApp {
         register(_firstAirlineAddress);
         addController(_firstAirlineAddress);
     }
-
-    // function setFirstController() external requireContractOwner() {
-    //     address _firstAirlineAddress = flightSuretyData.getFirstAirlineAddress();
-    //     register(_firstAirlineAddress);
-    //     addController(_firstAirlineAddress);
-    // }
 
 
     /********************************************************************************************/
@@ -226,7 +220,12 @@ contract FlightSuretyApp {
         }
     }
 
-    function candidateAirline(string memory _name, address _address) public requireIsOperational() {
+    function checkAirlines(address _address) public view 
+    returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {   
+        return flightSuretyData.checkAirlines(_address);
+    }
+
+    function candidateAirline(string memory _name, address _address) internal requireIsOperational() {
         require(!isRegistered(_address), "ERROR: AIRLINE IS ALREADY REGISTERED");
         require(!isCandidate(_address), "ERROR: AIRLINE IS ALREADY A CANDIDATE");
         
@@ -237,6 +236,10 @@ contract FlightSuretyApp {
             active: true
             })
         );
+    }
+
+    function checkCandidateAirlines() public view returns(Proposal[] memory ) {
+        return proposals;
     }
 
     function vote(string memory _name, address _address) public requireIsOperational() {
@@ -272,7 +275,11 @@ contract FlightSuretyApp {
         }
     }
 
-    function fund() external payable requireIsOperational() {
+
+    /********************************************************************************************/
+    /*                                       FUNDING FUNCTIONS                                  */
+    /********************************************************************************************/
+    function fund() public payable requireIsOperational() {
         require(isRegistered(msg.sender), "ERROR: CALLER IS NOT REGISTERED");
         require(!isParticipant(msg.sender), "ERROR: CALLER IS ALREADY A PARTICIPANT");
 
@@ -281,52 +288,116 @@ contract FlightSuretyApp {
         addParticipant(msg.sender);
     }
 
-    function checkAirlines(address _address) external view 
-    returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {   
-        return flightSuretyData.checkAirlines(_address);
-    }
-
-    function checkCandidateAirlines() public view returns(Proposal[] memory ) {
-        return proposals;
-    }
-
 
     /********************************************************************************************/
     /*                                        FLIGHT FUNCTIONS                                  */
     /********************************************************************************************/
-    function registerFlight (string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
+    function registerFlight(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public {
         require(isParticipant(msg.sender), "ERROR: CALLER IS NOT A PARTICIPANT");
         
         uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
-        
         require(_timestamp > block.timestamp + 172800, "ERROR: FLIGHT TIME MUST BE AT LEAST 48 HOURS THAN NOW");
          
         bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
+        require(!checkFlight(_flightKey), "ERROR: FLIGHT ALREADY REGISTERED");
         
-        require(!flightSuretyData.checkFlight(_flightKey), "ERROR: FLIGHT ALREADY REGISTERED");
+        fCounter++;
+        flights[_flightKey] = Flight({
+            flight: _flight,
+            flightId: fCounter,
+            active: true,
+            isRegistered: true,
+            statusCode: 0,
+            updatedTimestamp: _timestamp,
+            airlineAddress: msg.sender
+        });
 
-        flightSuretyData.registerFlight(_flightKey, _flight, _timestamp);
+        flightsReverse[fCounter] = _flightKey;
 
     }
 
-    function checkFlights(uint _flightId) external view
-    returns(bytes32 key_, string memory flight_, bool active_, uint8 status_, uint256 timestamp_, address address_) {
-        return flightSuretyData.checkFlights(_flightId);
+    function checkFlight(bytes32 _flightKey) internal view requireIsOperational() returns(bool) {
+        return flights[_flightKey].isRegistered;
     }
 
+    function updateFlightTimestamp(bytes32 _flightKey, uint256 _timestamp) internal requireIsOperational() {
+        flights[_flightKey].updatedTimestamp = _timestamp;
+    }
+
+    function updateFlightStatus(bytes32 _flightKey, uint8 _statusCode) internal requireIsOperational()  {
+        flights[_flightKey].statusCode = _statusCode;
+    }
+
+    function getFlightStatus(bytes32 _flightKey) internal view requireIsOperational() returns(uint8) {
+        return flights[_flightKey].statusCode;
+    }
+
+    function checkFlights(uint _flightId) public view requireIsOperational()
+        returns(bytes32 flightKey_, string memory flight_, bool active_, bool isRegistered_, uint8 status_, uint256 timestamp_, address address_) 
+    {
+        bytes32 _flightKey = flightsReverse[_flightId];
+        require(checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
+        return(_flightKey
+            , flights[_flightKey].flight
+            , flights[_flightKey].active
+            , flights[_flightKey].isRegistered
+            , flights[_flightKey].statusCode
+            , flights[_flightKey].updatedTimestamp
+            , flights[_flightKey].airlineAddress
+        );
+    }
+
+
+    /********************************************************************************************/
+    /*                                   PROCESS FLIGHT FUNCTION                                */
+    /********************************************************************************************/
     function processFlightStatus(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute, uint8 _statusCode) internal {
         uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
         bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
         
-        require(flightSuretyData.checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
+        require(checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
 
-        flightSuretyData.updateFlightTimestamp(_flightKey, _timestamp);
-        flightSuretyData.updateFlightStatus(_flightKey, _statusCode);
+        updateFlightTimestamp(_flightKey, _timestamp);
+        updateFlightStatus(_flightKey, _statusCode);
 
         if (_statusCode == STATUS_CODE_LATE_AIRLINE) {
             flightSuretyData.creditInsurees(_flightKey);
         }
     }
+
+
+    /********************************************************************************************/
+    /*                                     PASSENGER FUNCTIONS                                  */
+    /********************************************************************************************/
+    function buy(uint _flightId) public payable requireIsOperational() {
+        require(!isRegistered(msg.sender) && msg.sender != contractOwner, "ERROR: CALLER IS NOT ALLOWED TO BUY INSURANCE");
+        
+        bytes32 _flightKey = flightsReverse[_flightId];
+        require(checkFlight(_flightKey), "ERROR: FLIGHT NOT FOUND");
+
+        address _airlineAddress = flights[_flightKey].airlineAddress;
+
+        flightSuretyData.buy{value: msg.value}(_flightKey, msg.sender, _airlineAddress);
+
+    }
+
+    function checkPassengerInsurances() public view requireIsOperational() returns(bytes32[] memory) {
+        return flightSuretyData.checkPassengerInsurances(msg.sender);
+    }
+
+    function checkInsuranceAmountPaid(uint _flightId) public view requireIsOperational() returns(uint) {
+        bytes32 _flightKey = flightsReverse[_flightId];
+        return flightSuretyData.checkInsuranceAmountPaid(msg.sender, _flightKey);
+    }
+    
+    function checkInsurances(uint _insuranceId) public view requireIsOperational()
+    returns(bytes32 insuranceKey_, bytes32 flightKey_, address passengerAddress_, uint amountPaid_, uint amountAvailable_, bool claimable_, bool active_) {   
+        return flightSuretyData.checkInsurances(_insuranceId);
+    }
+
+
+
+
 
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus(address _airline, string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
@@ -347,7 +418,7 @@ contract FlightSuretyApp {
         uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
 
         bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
-        return flightSuretyData.getFlightStatus(_flightKey);
+        return getFlightStatus(_flightKey);
     }
 
     function withdrawCredit(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public {
@@ -355,7 +426,7 @@ contract FlightSuretyApp {
         uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
 
         bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
-        flightSuretyData.pay(_flightKey);
+        flightSuretyData.pay(msg.sender, _flightKey);
     }
 
 // region ORACLE MANAGEMENT
@@ -447,7 +518,7 @@ contract FlightSuretyApp {
         }
     }
 
-    function getFlightKey(address airline, string memory flight, uint256 timestamp) pure internal returns(bytes32) {
+    function getFlightKey(address airline, string memory flight, uint256 timestamp) pure public returns(bytes32) {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
     }
 
@@ -489,7 +560,6 @@ contract FlightSuretyApp {
 
 contract FlightSuretyData {
 
-
     function isOperational() external view returns(bool) {}
 
     function getFirstAirlineAddress() external view returns(address){}
@@ -503,22 +573,17 @@ contract FlightSuretyData {
     function checkAirlines(address _airlineAddress) external view 
     returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {}
 
-    function registerFlight(bytes32 _flightKey, string memory _flight, uint _timestamp) external {}
+    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable {}
 
-    function checkFlight(bytes32 _flightKey) external view returns(bool) {}
+    function checkInsurances(uint _insuranceId) external view
+    returns(bytes32 insuranceKey_, bytes32 flightKey_, address passengerAddress_, uint amountPaid_, uint amountAvailable_, bool claimable_, bool active_) {}
 
-    function checkFlights(uint _flightId) external view
-    returns(bytes32 key_, string memory flight_, bool active_, uint8 status_, uint256 timestamp_, address address_) {}
+    function checkPassengerInsurances(address _passengerAddress) external view returns(bytes32[] memory) {}
 
-    function updateFlightTimestamp(bytes32 _flightKey, uint256 _timestamp) external {}
-    
-    function updateFlightStatus(bytes32 _flightKey, uint8 _statusCode) external {}
-
-    function getFlightStatus(bytes32 _flightKey) external view returns(uint8) {}
+    function checkInsuranceAmountPaid(address _passengerAddress, bytes32 _flightKey) external view returns(uint amountPaid_) {}
 
     function creditInsurees(bytes32 _flightKey) external {}
 
-    function pay(bytes32 _flightKey) external {}
+    function pay(address _passengerAddress, bytes32 _flightKey) external {}
 
-    //function getDateTime(uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public pure returns(uint) {}
 }
