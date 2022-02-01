@@ -397,9 +397,9 @@ contract FlightSuretyApp {
     }
 
 
-
-
-
+    /********************************************************************************************/
+    /*                                 FLIGHT STATUS FUNCTIONS                                  */
+    /********************************************************************************************/
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus(address _airline, string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
         uint8 index = getRandomIndex(msg.sender);
@@ -422,8 +422,11 @@ contract FlightSuretyApp {
         return getFlightStatus(_flightKey);
     }
 
+
+    /********************************************************************************************/
+    /*                                      WITHDRAW FUNCTIONS                                  */
+    /********************************************************************************************/
     function withdrawCredit(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) public {
-        //uint _timestamp = flightSuretyData.getDateTime(_year, _month, _day, _hour, _minute);
         uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
 
         bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
@@ -443,8 +446,8 @@ contract FlightSuretyApp {
 
 
     struct Oracle {
-        bool isRegistered;
-        uint8[3] indexes;
+        bool        isRegistered;
+        uint8[3]    indexes;
     }
 
     // Track all registered oracles
@@ -452,11 +455,11 @@ contract FlightSuretyApp {
 
     // Model for responses from oracles
     struct ResponseInfo {
-        address requester;                              // Account that requested status
-        bool isOpen;                                    // If open, oracle responses are accepted
-        mapping(uint8 => address[]) responses;          // Mapping key is the status code reported
-                                                        // This lets us group responses and identify
-                                                        // the response that majority of the oracles
+        address     requester;                                  // Account that requested status
+        bool        isOpen;                                     // If open, oracle responses are accepted
+        mapping(uint8 => address[]) responses;                  // Mapping key is the status code reported
+                                                                // This lets us group responses and identify
+                                                                // the response that majority of the oracles
     }
 
     // Track all oracle responses
@@ -481,10 +484,12 @@ contract FlightSuretyApp {
 
         uint8[3] memory indexes = generateIndexes(msg.sender);
 
-        oracles[msg.sender] = Oracle({
-                                        isRegistered: true,
-                                        indexes: indexes
-                                    });
+        oracles[msg.sender] = Oracle(
+            {
+                isRegistered: true,
+                indexes: indexes
+            }
+        );
     }
 
     function getMyIndexes() external view returns(uint8[3] memory) {
