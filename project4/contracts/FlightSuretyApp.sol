@@ -97,7 +97,7 @@ contract FlightSuretyApp {
         uint256         updatedTimestamp;
         address         airlineAddress;
     }
-    mapping(bytes32 => Flight) private flights;
+    mapping(bytes32 => Flight) public flights;
     mapping(uint => bytes32) public flightsReverse;
 
 
@@ -316,7 +316,7 @@ contract FlightSuretyApp {
 
     }
 
-    function checkFlight(bytes32 _flightKey) internal view requireIsOperational() returns(bool) {
+    function checkFlight(bytes32 _flightKey) public view requireIsOperational() returns(bool) {
         return flights[_flightKey].isRegistered;
     }
 
@@ -387,6 +387,7 @@ contract FlightSuretyApp {
 
     function checkInsuranceAmountPaid(uint _flightId) public view requireIsOperational() returns(uint) {
         bytes32 _flightKey = flightsReverse[_flightId];
+        require(checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
         return flightSuretyData.checkInsuranceAmountPaid(msg.sender, _flightKey);
     }
     

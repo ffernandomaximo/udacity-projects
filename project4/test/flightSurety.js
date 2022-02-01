@@ -191,21 +191,20 @@ contract("FLIGHT SURETY TESTS", async (accounts) => {
     });
 
 
-    /* BUY FLIGHT *//*
+    /* BUY FLIGHT */
     it("PASSENGER CAN BUY A FLIGHT", async () => {   
         let newPassengerAddress = accounts[7]; 
         let payment = web3.utils.toWei("1", "ether").toString();
         let flightOption = 1;
         try {
-            await config.flightSuretyApp.buy(flightOption, {from: newPassengerAddress, value: payment, gasPrice: 0, gas:230000});
+            await config.flightSuretyApp.buy(flightOption, {from: newPassengerAddress, value: payment, gasPrice: 0, gas:500000});
         }
         catch(e) {
             console.log(e);
         }
-        let result = await config.flightSuretyApp.checkInsuranceAmountPaid.call(flightOption);
+        let result = await config.flightSuretyApp.checkInsuranceAmountPaid.call(flightOption, {from: newPassengerAddress});
 
         assert.equal(result, payment, "CONTROLLERS SHOULD BE ABLE TO REGISTER NEW AIRLINES");
     });
-*/
 
 });

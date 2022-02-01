@@ -191,13 +191,16 @@ contract FlightSuretyData {
     function getInsuranceKey(address _passengerAddress, bytes32 _flightKey) pure internal returns(bytes32) {
         bytes32 _addressToBytes32 = bytes32(uint256(uint160(_passengerAddress)) << 96);
         return keccak256(abi.encodePacked(_addressToBytes32, _flightKey));
+        //return keccak256(abi.encodePacked(_passengerAddress, _flightKey));
     }
 
 
     /********************************************************************************************/
     /*                              SMART CONTRACT BUYING FUNCTIONS                             */
     /********************************************************************************************/
-    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {        
+    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable 
+    checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {        
+        
         bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
         
         require(insurances[_insuranceKey].flightKey != _flightKey, "ERROR: PASSENGER ALREADY BOUGHT THIS FLIGHT INSURANCE");
@@ -220,29 +223,28 @@ contract FlightSuretyData {
 
         airlines[_airlineAddress].fundAvailable = SafeMath.add(airlines[_airlineAddress].fundAvailable, msg.value);
         airlines[_airlineAddress].fundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
-        
     }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    // function creditInsurees(bytes32 _flightKey) external requireAuthorizedCaller() requireIsOperational() {
-    //     bytes32 _insuranceKey = getInsuranceKey(msg.sender, _flightKey);
-    //     require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
-    //     require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
+    function creditInsurees(address _passengerAddress, bytes32 _flightKey, address _airlineAddress) 
+    external requireAuthorizedCaller() requireIsOperational() {
+        bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
+        require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
+        require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
 
-    //     address _airlineAddress = flights[_flightKey].airlineAddress;
-    //     uint _amountPaid = insurances[_insuranceKey].amountPaid;
-    //     uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
+        uint _amountPaid = insurances[_insuranceKey].amountPaid;
+        uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
 
-    //     uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
-    //     uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
+        uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
+        uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
 
-    //     insurances[_insuranceKey].amountAvailable = _amountToCredit;
+        insurances[_insuranceKey].amountAvailable = _amountToCredit;
 
-    //     airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
-    //     airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
-    // }
+        airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
+        airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
+    }
     
 
     /**
