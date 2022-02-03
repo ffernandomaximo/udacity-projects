@@ -47,6 +47,7 @@ contract FlightSuretyData {
     mapping(bytes32 => Insurance) insurances;
     mapping(uint => bytes32) insurancesReverse;
     mapping(address => bytes32[]) passengerInsurances;
+    mapping(bytes32 => bytes32[]) flightInsurances;
     uint iCounter;
 
 
@@ -198,7 +199,7 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                              SMART CONTRACT BUYING FUNCTIONS                             */
     /********************************************************************************************/
-    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable 
+    function buy(address _passengerAddress, bytes32 _flightKey, address _airlineAddress) external payable 
     checkPassengerValue() requireAuthorizedCaller() requireIsOperational() {        
         
         bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
@@ -220,30 +221,31 @@ contract FlightSuretyData {
         );
         insurancesReverse[iCounter] = _insuranceKey;
         passengerInsurances[_passengerAddress].push(_insuranceKey);
+        flightInsurances[_flightKey].push(_insuranceKey);
 
         airlines[_airlineAddress].fundAvailable = SafeMath.add(airlines[_airlineAddress].fundAvailable, msg.value);
         airlines[_airlineAddress].fundCommitted = SafeMath.div(SafeMath.mul(msg.value, 15), 10);
     }
 
-    /**
-     *  @dev Credits payouts to insurees
-    */
-    function creditInsurees(address _passengerAddress, bytes32 _flightKey, address _airlineAddress) 
+    function creditInsurees(bytes32 _flightKey, address _airlineAddress) 
     external requireAuthorizedCaller() requireIsOperational() {
-        bytes32 _insuranceKey = getInsuranceKey(_passengerAddress, _flightKey);
-        require(insurances[_insuranceKey].flightKey == _flightKey, "ERROR: INSURANCE NOT FOUND");
-        require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
+        require(flightInsurances[_flightKey].length > 0, "ERROR: INSURANCE NOT FOUND");
 
-        uint _amountPaid = insurances[_insuranceKey].amountPaid;
-        uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
+        for(uint c = 0; c < flightInsurances[_flightKey].length; c++) {
+            bytes32 _insuranceKey = flightInsurances[_flightKey][c];
+            require(insurances[_insuranceKey].claimable, "ERROR: NOTHING TO CLAIM");
 
-        uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
-        uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
+            uint _amountPaid = insurances[_insuranceKey].amountPaid;
+            uint _amountToCredit = SafeMath.div(SafeMath.mul(_amountPaid, 15), 10);
 
-        insurances[_insuranceKey].amountAvailable = _amountToCredit;
+            uint _fundAvailable = airlines[_airlineAddress].fundAvailable;
+            uint _fundCommitted = airlines[_airlineAddress].fundCommitted;
 
-        airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
-        airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
+            insurances[_insuranceKey].amountAvailable = _amountToCredit;
+
+            airlines[_airlineAddress].fundAvailable = SafeMath.sub(_fundAvailable, _amountToCredit);
+            airlines[_airlineAddress].fundCommitted = SafeMath.sub(_fundCommitted, _amountToCredit);
+        }
     }
     
 

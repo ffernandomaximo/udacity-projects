@@ -351,18 +351,20 @@ contract FlightSuretyApp {
     /********************************************************************************************/
     /*                                   PROCESS FLIGHT FUNCTION                                */
     /********************************************************************************************/
-    function processFlightStatus(string memory _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute, uint8 _statusCode) internal {
-        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
-        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
-        
+    //function processFlightStatus(bytes32 _flightKey, uint _timestamp, uint8 _statusCode) internal {
+    function processFlightStatus(address _airlineAddress, string memory _flight, uint _timestamp, uint8 _statusCode) internal {
+        bytes32 _flightKey = getFlightKey(_airlineAddress, _flight, _timestamp);
         require(checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
 
         updateFlightTimestamp(_flightKey, _timestamp);
         updateFlightStatus(_flightKey, _statusCode);
 
         if (_statusCode == STATUS_CODE_LATE_AIRLINE) {
-            flightSuretyData.creditInsurees(_flightKey);
+            flightSuretyData.creditInsurees(_flightKey, _airlineAddress);
         }
+        // else if(_statusCode == STATUS_CODE_ON_TIME) {
+        //     flightSuretyData.creditInsurees(_flightKey, _airlineAddress);
+        // }
     }
 
 
@@ -377,7 +379,7 @@ contract FlightSuretyApp {
 
         address _airlineAddress = flights[_flightKey].airlineAddress;
 
-        flightSuretyData.buy{value: msg.value}(_flightKey, msg.sender, _airlineAddress);
+        flightSuretyData.buy{value: msg.value}(msg.sender, _flightKey, _airlineAddress);
 
     }
 
@@ -415,10 +417,9 @@ contract FlightSuretyApp {
     }
 
     // Query the status of any flight
-    function viewFlightStatus(string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external view returns(uint8) {
-        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
-
-        bytes32 _flightKey = getFlightKey(msg.sender, _flight, _timestamp);
+    function viewFlightStatus(uint _flightId) external view returns(uint8) {
+        bytes32 _flightKey = flightsReverse[_flightId];
+        require(checkFlight(_flightKey), "ERROR: FLIGHT IS NOT REGISTERED");
         return getFlightStatus(_flightKey);
     }
 
@@ -443,7 +444,6 @@ contract FlightSuretyApp {
 
     // Number of oracles that must respond for valid status
     uint256 private constant MIN_RESPONSES = 3;
-
 
     struct Oracle {
         bool        isRegistered;
@@ -475,7 +475,6 @@ contract FlightSuretyApp {
     // Oracles track this and if they have a matching index
     // they fetch data and submit a response
     event OracleRequest(uint8 index, address airline, string flight, uint256 timestamp);
-
 
     // Register an oracle with the contract
     function registerOracle() external payable {
@@ -520,7 +519,7 @@ contract FlightSuretyApp {
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
             // Handle flight status as appropriate
-            //processFlightStatus(flight, timestamp, statusCode);
+            processFlightStatus(airline, flight, timestamp, statusCode);
         }
     }
 
@@ -579,7 +578,7 @@ contract FlightSuretyData {
     function checkAirlines(address _airlineAddress) external view 
     returns(string memory name_, address address_, bool registered_, bool participant_, bool controller_, uint fundavailable_, uint fundcommitted_) {}
 
-    function buy(bytes32 _flightKey, address _passengerAddress, address _airlineAddress) external payable {}
+    function buy(address _passengerAddress, bytes32 _flightKey, address _airlineAddress) external payable {}
 
     function checkInsurances(uint _insuranceId) external view
     returns(bytes32 insuranceKey_, bytes32 flightKey_, address passengerAddress_, uint amountPaid_, uint amountAvailable_, bool claimable_, bool active_) {}
@@ -588,7 +587,7 @@ contract FlightSuretyData {
 
     function checkInsuranceAmountPaid(address _passengerAddress, bytes32 _flightKey) external view returns(uint amountPaid_) {}
 
-    function creditInsurees(bytes32 _flightKey) external {}
+    function creditInsurees(bytes32 _flightKey, address _airlineAddress) external {}
 
     function pay(address _passengerAddress, bytes32 _flightKey) external {}
 
