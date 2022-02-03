@@ -54,11 +54,6 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
-    event Registration(address);
-    event Candidate(address);
-    event Funding(address);
-    event Acquisition(address);
-    event Payment(address);
 
 
     /********************************************************************************************/
@@ -167,9 +162,6 @@ contract FlightSuretyData {
                 fundCommitted: 0
             }
         );
-            
-        emit Registration(_address);
-        
     }
 
 
@@ -181,8 +173,6 @@ contract FlightSuretyData {
 
         airlines[_address].participant = true;
         airlines[_address].fundAvailable = msg.value;
-    
-        emit Funding(_address);
     }
 
 

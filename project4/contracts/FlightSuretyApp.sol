@@ -403,11 +403,9 @@ contract FlightSuretyApp {
     /*                                 FLIGHT STATUS FUNCTIONS                                  */
     /********************************************************************************************/
     // Generate a request for oracles to fetch flight information
-    function fetchFlightStatus(address _airline, string calldata _flight, uint16 _year, uint8 _month, uint8 _day, uint8 _hour, uint8 _minute) external {
+    function fetchFlightStatus(address _airline, string calldata _flight, uint256 _timestamp) external requireIsOperational() {
         uint8 index = getRandomIndex(msg.sender);
-
-        uint _timestamp = getDateTime(_year, _month, _day, _hour, _minute);
-
+        
         // Generate a unique key for storing the request
         bytes32 key = keccak256(abi.encodePacked(index, _airline, _flight, _timestamp));
         oracleResponses[key].requester = msg.sender;
